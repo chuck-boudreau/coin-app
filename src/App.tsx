@@ -1,35 +1,39 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState } from 'react';
+import { COINList } from './pages/COINList';
+import type { COIN } from './types/coin';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // State for all COINs (in memory - no localStorage)
+  const [coins, setCoins] = useState<COIN[]>([]);
+  
+  // Currently selected COIN ID (null = on list page)
+  const [currentCOINId, setCurrentCOINId] = useState<string | null>(null);
 
+  // Handler: Create new COIN (UC-100 will implement this)
+  const handleCreateNew = () => {
+    console.log('Create new COIN clicked - UC-100 will handle this');
+    // TODO: Open UC-100 modal in next implementation
+  };
+
+  // Handler: Open a COIN in the editor
+  const handleOpenCOIN = (coinId: string) => {
+    console.log('Open COIN:', coinId);
+    setCurrentCOINId(coinId);
+    // TODO: Navigate to editor view (future implementation)
+  };
+
+  // For now, always show the COIN list (UC-201)
+  // Editor view will be added in future use cases
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="min-h-screen bg-gray-50">
+      <COINList 
+        coins={coins}
+        onCreateNew={handleCreateNew}
+        onOpenCOIN={handleOpenCOIN}
+      />
+    </div>
+  );
 }
 
-export default App
+export default App;
