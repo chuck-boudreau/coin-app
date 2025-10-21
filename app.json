@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "coin-app",
+    "name": "COIN App",
     "slug": "coin-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agiledesignmethods.coinapp",
+      "requireFullScreen": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to import hand-drawn COIN diagrams.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to import COIN diagrams."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,6 +31,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
