@@ -114,6 +114,52 @@ export class COINRepository {
   }
 
   /**
+   * Update an existing COIN's name
+   * @throws Error if name is empty or duplicate (case-insensitive)
+   */
+  static async updateCOIN(id: string, name: string): Promise<COIN> {
+    // Load existing COIN
+    const coin = await this.getCOIN(id);
+    if (!coin) {
+      throw new Error('COIN not found');
+    }
+
+    // Validate name
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Please enter a COIN name');
+    }
+
+    // Check for duplicate name (case-insensitive), excluding current COIN
+    const existingCoins = await this.getAllCOINs();
+    const duplicate = existingCoins.find(
+      c => c.id !== id && c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error('A COIN with this name already exists');
+    }
+
+    // Update COIN
+    const now = new Date().toISOString();
+    const userId = getDeviceUserId();
+
+    const updatedCoin: COIN = {
+      ...coin,
+      name: trimmedName,
+      lastModifiedBy: userId,
+      lastModifiedAt: now,
+    };
+
+    // Save updated COIN
+    await AsyncStorage.setItem(
+      `${COIN_KEY_PREFIX}${updatedCoin.id}`,
+      JSON.stringify(updatedCoin)
+    );
+
+    return updatedCoin;
+  }
+
+  /**
    * Clear all COINs (useful for testing)
    */
   static async clearAll(): Promise<void> {

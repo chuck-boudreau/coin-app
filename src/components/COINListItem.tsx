@@ -5,6 +5,7 @@ import { COIN } from '../types/COIN';
 interface Props {
   coin: COIN;
   onPress: (id: string) => void;
+  onEdit: (coin: COIN) => void;
 }
 
 function formatDate(dateString: string): string {
@@ -33,25 +34,35 @@ function formatDate(dateString: string): string {
   }
 }
 
-export default function COINListItem({ coin, onPress }: Props) {
+export default function COINListItem({ coin, onPress, onEdit }: Props) {
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => onPress(coin.id)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.content}>
-        <Text style={styles.name}>{coin.name}</Text>
-        <View style={styles.metadata}>
-          <Text style={styles.date}>
-            Modified {formatDate(coin.lastModifiedAt)}
-          </Text>
-          <Text style={styles.date}>
-            Created {formatDate(coin.createdAt)}
-          </Text>
+    <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.cardContent}
+        onPress={() => onPress(coin.id)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.content}>
+          <Text style={styles.name}>{coin.name}</Text>
+          <View style={styles.metadata}>
+            <Text style={styles.date}>
+              Modified {formatDate(coin.lastModifiedAt)}
+            </Text>
+            <Text style={styles.date}>
+              Created {formatDate(coin.createdAt)}
+            </Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.editButton}
+        onPress={() => onEdit(coin)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.editButtonText}>Edit Details</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -59,7 +70,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
     minHeight: 88,
@@ -68,6 +78,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    padding: 16,
   },
   content: {
     flex: 1,
@@ -86,5 +100,20 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 14,
     color: '#666',
+  },
+  editButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  editButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#007AFF',
   },
 });

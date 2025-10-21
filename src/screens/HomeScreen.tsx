@@ -13,10 +13,13 @@ import { COIN } from '../types/COIN';
 import COINListItem from '../components/COINListItem';
 import EmptyState from '../components/EmptyState';
 import CreateCOINModal from '../components/CreateCOINModal';
+import EditCOINModal from '../components/EditCOINModal';
 
 export default function HomeScreen() {
   const [coins, setCoins] = useState<COIN[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedCOIN, setSelectedCOIN] = useState<COIN | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,8 +50,20 @@ export default function HomeScreen() {
     Alert.alert('COIN Selected', `Opening COIN: ${id}\n\n(Editor coming in future wave)`);
   };
 
+  const handleEditCOIN = (coin: COIN) => {
+    setSelectedCOIN(coin);
+    setShowEditModal(true);
+  };
+
+  const handleCOINUpdated = (updatedCOIN: COIN) => {
+    // Update the COIN in the list
+    setCoins(coins.map(c => c.id === updatedCOIN.id ? updatedCOIN : c));
+    setShowEditModal(false);
+    setSelectedCOIN(null);
+  };
+
   const renderCOINItem = ({ item }: { item: COIN }) => (
-    <COINListItem coin={item} onPress={handleOpenCOIN} />
+    <COINListItem coin={item} onPress={handleOpenCOIN} onEdit={handleEditCOIN} />
   );
 
   return (
@@ -82,6 +97,17 @@ export default function HomeScreen() {
         visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCOINCreated={handleCOINCreated}
+      />
+
+      {/* Edit COIN Modal */}
+      <EditCOINModal
+        visible={showEditModal}
+        coin={selectedCOIN}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedCOIN(null);
+        }}
+        onCOINUpdated={handleCOINUpdated}
       />
     </SafeAreaView>
   );
