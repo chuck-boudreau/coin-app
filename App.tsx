@@ -1,72 +1,121 @@
 import 'react-native-gesture-handler';
-import { StatusBar } from 'expo-status-bar';
-import { Text } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StatusBar, Text } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from './src/screens/HomeScreen';
-import ProjectsScreen from './src/screens/ProjectsScreen';
-import ProjectDetailScreen from './src/screens/ProjectDetailScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RecentsScreen } from './src/screens/RecentsScreen';
+import { ProjectsScreen } from './src/screens/ProjectsScreen';
+import { FavoritesScreen } from './src/screens/FavoritesScreen';
 
 const Tab = createBottomTabNavigator();
-const ProjectsStack = createStackNavigator();
+const LAST_TAB_KEY = '@design_the_what:last_tab';
 
-// Projects Tab Stack Navigator
-function ProjectsStackNavigator() {
-  return (
-    <ProjectsStack.Navigator>
-      <ProjectsStack.Screen
-        name="ProjectsScreen"
-        component={ProjectsScreen}
-        options={{ headerShown: false }}
-      />
-      <ProjectsStack.Screen
-        name="ProjectDetailScreen"
-        component={ProjectDetailScreen}
-        options={{
-          headerShown: true,
-          headerBackTitle: 'Projects',
-        }}
-      />
-    </ProjectsStack.Navigator>
-  );
-}
+type TabRoute = 'Recents' | 'Projects' | 'Favorites';
 
+// Design The What - COIN Diagram App
 export default function App() {
+  const [initialRoute, setInitialRoute] = useState<TabRoute>('Recents');
+  const [isReady, setIsReady] = useState(false);
+
+  // Load last selected tab on mount
+  useEffect(() => {
+    loadLastTab();
+  }, []);
+
+  const loadLastTab = async () => {
+    try {
+      const lastTab = await AsyncStorage.getItem(LAST_TAB_KEY);
+      if (lastTab && (lastTab === 'Recents' || lastTab === 'Projects' || lastTab === 'Favorites')) {
+        setInitialRoute(lastTab as TabRoute);
+      }
+    } catch (error) {
+      console.log('Error loading last tab:', error);
+    } finally {
+      setIsReady(true);
+    }
+  };
+
+  const saveLastTab = async (routeName: string) => {
+    try {
+      await AsyncStorage.setItem(LAST_TAB_KEY, routeName);
+    } catch (error) {
+      console.log('Error saving last tab:', error);
+    }
+  };
+
+  if (!isReady) {
+    return null; // Or a splash screen
+  }
+
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#8E8E93',
-          tabBarStyle: {
-            backgroundColor: '#ffffff',
-            borderTopWidth: 1,
-            borderTopColor: '#e0e0e0',
-          },
-          headerShown: false,
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" />
+      <NavigationContainer
+        onStateChange={(state) => {
+          // Save the current tab whenever navigation state changes
+          const currentRoute = state?.routes[state.index];
+          if (currentRoute?.name) {
+            saveLastTab(currentRoute.name);
+          }
         }}
       >
-        <Tab.Screen
-          name="Recents"
-          component={HomeScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Text style={{ fontSize: size, color }}>🕐</Text>
-            ),
+        <Tab.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: '#007AFF',
+            tabBarInactiveTintColor: '#666666',
+            tabBarStyle: {
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              borderTopWidth: 0.5,
+              borderTopColor: 'rgba(0, 0, 0, 0.1)',
+              paddingTop: 10,
+              paddingBottom: 10,
+              height: 65,
+              position: 'absolute',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              elevation: 4,
+            },
+            tabBarLabelStyle: {
+              fontSize: 14,
+              fontWeight: '600',
+            },
           }}
-        />
-        <Tab.Screen
-          name="Projects"
-          component={ProjectsStackNavigator}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Text style={{ fontSize: size, color }}>📁</Text>
-            ),
-          }}
-        />
-      </Tab.Navigator>
-      <StatusBar style="auto" />
-    </NavigationContainer>
+        >
+          <Tab.Screen
+            name="Recents"
+            component={RecentsScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <Text style={{ fontSize: 24, color }}>🕐</Text>
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Projects"
+            component={ProjectsScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <Text style={{ fontSize: 24, color }}>📁</Text>
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Favorites"
+            component={FavoritesScreen}
+            options={{
+              tabBarIcon: ({ color, size }) => (
+                <Text style={{ fontSize: 24, color }}>⭐</Text>
+              ),
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
