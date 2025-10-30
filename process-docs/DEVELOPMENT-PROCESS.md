@@ -317,6 +317,10 @@ git push
 ~/Projects/coin-app/
 ├── README.md                           # Project overview, current status
 ├── CLAUDE.md                           # ⭐ Claude Code's persistent memory
+├── process-docs/                       # Process documentation
+│   ├── DEVELOPMENT-PROCESS.md          # This file
+│   ├── Token-Management-Protocol.md    # Token management
+│   └── ...
 ├── specifications/                     # Before implementation
 │   ├── UC-100-Specification.md
 │   ├── UC-200-Specification.md
