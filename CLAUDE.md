@@ -20,6 +20,35 @@ You are the AI developer for the COIN App. Chuck (Product Owner) provides specif
 - Extend existing components rather than creating duplicates
 - Ask questions when integration is unclear
 
+### Before You Start: Specification Quality Check
+
+**📋 Full Checklist:** See `process-docs/SPECIFICATION-QUALITY-CHECKLIST.md` for detailed guidance.
+
+**Quick Check - Every specification should have:**
+
+✅ **Essential Elements (Must Have):**
+- Context setting (links to prior UC summaries, CLAUDE.md references)
+- Component reuse instructions (explicit list of what to reuse)
+- Step-by-step implementation guide
+- Data model changes (if any, with TypeScript definitions)
+- Filter/sort logic (exact conditions provided)
+- Mock data strategy (what test data to create)
+- Testing checklist (scenarios to verify)
+
+✅ **Quality Enhancements (Should Have 70%+):**
+- State management strategy (context vs local, persistence needs)
+- Default behaviors (sort, view mode, initial values)
+- User feedback patterns (haptics, animations, confirmations)
+- Performance considerations (memoization, list optimization)
+- Integration impact analysis (potential regressions)
+
+**Target Spec Quality:** 8-9/10 range (leaves room for healthy refinement)
+
+**If specification is missing key elements:**
+- Ask targeted questions before starting implementation
+- Reference checklist to identify gaps
+- Don't guess - clarify with Chuck
+
 ---
 
 ## 📋 Critical Rules (READ FIRST)
@@ -726,6 +755,18 @@ const Border = {
 - Acceptance criteria
 
 **Your job:** Follow the specification exactly, ask questions when unclear.
+
+### Specification Quality Reference
+
+**Location:** `process-docs/SPECIFICATION-QUALITY-CHECKLIST.md`
+
+**Use this to:**
+- Assess if specification has all essential elements before starting
+- Identify gaps and ask targeted questions
+- Understand target quality range (8-9/10)
+- Reference examples from UC-202 (what worked, what could improve)
+
+**For Chuck:** This checklist helps when working with Claude Chat to create specifications. It ensures completeness and sets Claude Code up for success.
 
 ---
 
