@@ -1,6 +1,6 @@
 # COIN App Development Process
 
-**Version:** 1.1  
+**Version:** 1.3  
 **Last Updated:** October 30, 2025  
 **Purpose:** Standard workflow for implementing use cases with Claude Code
 
@@ -14,6 +14,8 @@ This document defines the repeatable process for implementing use cases in the C
 1. **Specification** (before implementation) - Instructions for Claude Code
 2. **Session Summary** (after implementation) - Record of what was actually built
 3. **CLAUDE.md** (living document) - Claude Code's persistent memory across all UCs
+
+**Critical v1.3 Addition:** CLAUDE.md verification procedures to catch documentation drift before creating specifications.
 
 ---
 
@@ -33,13 +35,122 @@ This document defines the repeatable process for implementing use cases in the C
    - Previous session summaries (to understand current state)
    - Use Case Registry (to see what's implemented)
    - **CLAUDE.md** (to see established patterns and constraints)
-4. Claude Chat creates comprehensive specification including:
+
+4. **Claude Chat VERIFIES CLAUDE.md accuracy:** ⚠️ CRITICAL STEP
+
+   **Why This Matters:**
+   
+   CLAUDE.md can drift from actual code reality over time. Creating a specification based on wrong information causes implementation failures and wasted time.
+   
+   **Verification Checklist - Do This Before Writing Spec:**
+   
+   Open CLAUDE.md and actual codebase side-by-side, then verify:
+   
+   **A. Component Interfaces:**
+   - [ ] Handler signatures match actual code
+     - Open actual component files (`src/components/*.tsx`)
+     - Check: Do handlers take `coinId: string` or `coin: COIN`?
+     - Update CLAUDE.md if wrong
+   
+   - [ ] Component props are complete
+     - Check actual TypeScript interfaces
+     - Verify all props documented
+     - Add missing props to CLAUDE.md (e.g., `onRemove`, `showCreatedDate`)
+   
+   **B. Utilities & Functions:**
+   - [ ] Referenced utilities actually exist
+     - Check `src/utils/` directory
+     - Verify functions mentioned in CLAUDE.md are real
+     - Remove references to non-existent utilities
+   
+   - [ ] Storage patterns match implementation
+     - Check actual screen files (e.g., `RecentsScreen.tsx`)
+     - Verify: Inline AsyncStorage or utility functions?
+     - Update CLAUDE.md to match reality
+   
+   - [ ] Sorting patterns match implementation
+     - Check actual sort implementations
+     - Verify: Inline with useMemo or utility function?
+     - Update CLAUDE.md to match reality
+   
+   **C. Patterns & Conventions:**
+   - [ ] Feedback pattern documented correctly
+     - Check: `Alert.alert()` or toast library?
+     - Verify what's actually used in existing screens
+     - Update if wrong
+   
+   - [ ] AsyncStorage keys list is complete
+     - Search codebase for `@design_the_what:`
+     - Add any missing keys to CLAUDE.md
+   
+   **D. Integration Points:**
+   - [ ] Reusable components listed correctly
+     - Check `src/components/` directory
+     - Verify components mentioned exist
+     - Update component descriptions if changed
+   
+   **Process When Discrepancies Found:**
+   
+   ```bash
+   # 1. Fix CLAUDE.md immediately (don't wait)
+   # 2. Commit separately with clear message
+   cd ~/Projects/coin-app
+   git add CLAUDE.md
+   git commit -m "fix(docs): Correct CLAUDE.md - [what was wrong]
+   
+   Found during: UC-XXX specification creation
+   Issue: [describe discrepancy]
+   Fixed: [describe correction]"
+   git push
+   
+   # 3. Continue with UC specification
+   ```
+   
+   **Example Real Discrepancies (from UC-202):**
+   
+   ❌ **WRONG in CLAUDE.md:**
+   ```typescript
+   onPress: (coin: COIN) => void
+   ```
+   
+   ✅ **ACTUAL in code:**
+   ```typescript
+   onPress: (coinId: string) => void
+   ```
+   
+   ❌ **WRONG in CLAUDE.md:**
+   "Import and use sortCOINs utility"
+   
+   ✅ **ACTUAL in code:**
+   No sortCOINs utility exists - sorting is inline with useMemo
+   
+   ❌ **WRONG in CLAUDE.md:**
+   "Use showToast() for feedback"
+   
+   ✅ **ACTUAL in code:**
+   Project uses `Alert.alert()` - no toast library
+   
+   **Signs CLAUDE.md Needs Verification:**
+   - 🚩 Specification references utilities that don't exist
+   - 🚩 Claude Code generates code that doesn't compile
+   - 🚩 Handler signatures mismatch during implementation
+   - 🚩 Time gap since last UC (>2 weeks)
+   - 🚩 New wave starting (green field moment)
+   - 🚩 You're unsure about documented patterns
+   
+   **Best Practice:**
+   
+   Always verify CLAUDE.md accuracy at the START of each new wave. This catches accumulated drift before it affects multiple UCs.
+
+5. Claude Chat creates comprehensive specification including:
    - Technical requirements
    - Integration notes (what to preserve from previous UCs)
    - Mock data strategy (if needed)
    - Component architecture
    - Step-by-step implementation guide
-5. Save specification to `~/Projects/coin-app/specifications/UC-XXX-Specification.md`
+   - **Verified** patterns from CLAUDE.md (not aspirational ones)
+
+6. Save specification to `~/Projects/coin-app/specifications/UC-XXX-Specification.md`
 
 **Naming Convention:** `UC-XXX-Specification.md` (e.g., `UC-200-Specification.md`)
 
@@ -185,7 +296,7 @@ git branch -D feature/uc-XXX
 
 ---
 
-### **Step 7a: Update CLAUDE.md** ⭐ NEW STEP
+### **Step 7a: Update CLAUDE.md** ⭐ CRITICAL
 
 **When:** After merge is complete, before updating registry  
 **Tool:** Text editor  
@@ -286,7 +397,7 @@ With updated CLAUDE.md:
 
 ---
 
-### **Step 7: Update Documentation**
+### **Step 7b: Update Documentation**
 
 **When:** After CLAUDE.md is updated  
 **Tool:** Text editor, Git
@@ -315,21 +426,17 @@ git push
 
 ```
 ~/Projects/coin-app/
-├── README.md                           # Project overview, current status
-├── CLAUDE.md                           # ⭐ Claude Code's persistent memory
-├── process-docs/                       # Process documentation
-│   ├── DEVELOPMENT-PROCESS.md          # This file
-│   ├── Token-Management-Protocol.md    # Token management
-│   └── ...
-├── specifications/                     # Before implementation
+├── CLAUDE.md                        # Claude Code's persistent memory
+├── README.md                        # Project overview, current status
+├── specifications/                  # Before implementation
 │   ├── UC-100-Specification.md
 │   ├── UC-200-Specification.md
 │   └── ...
-├── sessions/                           # After implementation
+├── sessions/                        # After implementation
 │   ├── UC-100-Session-Summary.md
 │   ├── UC-200-Session-Summary.md
 │   └── ...
-├── src/                                # Source code
+├── src/                             # Source code
 │   ├── components/
 │   ├── screens/
 │   ├── types/
@@ -352,7 +459,7 @@ git push
 [Platform, tech stack, current status]
 
 ## INTEGRATION WITH EXISTING CODE
-**Current Codebase:** (from CLAUDE.md)
+**Current Codebase:** (from CLAUDE.md - VERIFIED)
 - ✅ [What's already implemented]
 - ✅ [Established patterns]
 
@@ -456,7 +563,7 @@ Each new UC specification must include:
 ```markdown
 ## INTEGRATION WITH EXISTING CODE
 
-**Current Codebase State:** (from CLAUDE.md)
+**Current Codebase State:** (from CLAUDE.md - VERIFIED in Step 1)
 [Summary from previous session summaries]
 
 **Files to Preserve:**
@@ -479,6 +586,7 @@ Each new UC specification must include:
 ## Common Pitfalls to Avoid
 
 ### **❌ Don't:**
+- Start implementation without verifying CLAUDE.md accuracy first
 - Start implementation without reading CLAUDE.md
 - Start implementation without reading previous session summaries
 - Create specifications that ignore existing code
@@ -489,6 +597,7 @@ Each new UC specification must include:
 - Delete feature branch before verifying merge
 
 ### **✅ Do:**
+- **Verify CLAUDE.md accuracy before creating each spec**
 - Read CLAUDE.md before creating specifications
 - Read all previous session summaries before creating new spec
 - Include integration notes in specifications
@@ -539,6 +648,13 @@ git checkout -b feature/uc-XXX-retry
 - Update CLAUDE.md with the actual pattern that emerged
 - Update spec for next similar UC if pattern emerges
 
+### **If CLAUDE.md Contains Wrong Information:**
+1. Stop current work immediately
+2. Fix CLAUDE.md to match actual code
+3. Commit fix separately with clear description
+4. Resume work with corrected documentation
+5. Consider if other UCs affected by same wrong info
+
 ---
 
 ## Quality Checklist
@@ -561,6 +677,7 @@ Before considering UC complete:
 - [ ] Specification saved in `specifications/`
 - [ ] Session summary saved in `sessions/`
 - [ ] **CLAUDE.md updated** ⭐ CRITICAL
+- [ ] **CLAUDE.md verified accurate** ⭐ NEW in v1.3
 - [ ] Git commit has detailed message
 - [ ] README.md updated
 - [ ] Use Case Registry updated
@@ -577,18 +694,39 @@ Before considering UC complete:
 
 **Actual implementation of this process:**
 
-1. ✅ Created `specifications/UC-200-Specification.md` (originally named UC-200-Claude-Code-Implementation-Prompt.md)
-2. ✅ Created feature branch (wave-1-fresh-start-uc200)
-3. ✅ Gave spec to Claude Code
-4. ✅ Iterated and enhanced (added tabs, sorting, list view, persistence)
-5. ✅ Got implementation summary from Claude Code
-6. ✅ Saved as `sessions/UC-200-Session-Summary.md`
-7. ✅ Committed with detailed message
-8. ✅ Created backup branch (backup-uc200-enhanced)
-9. ✅ **Updated CLAUDE.md with UC-200 patterns** ⭐ NEW
-10. ✅ Updated documentation
+1. ✅ Verified CLAUDE.md accuracy (none existed yet, created from scratch)
+2. ✅ Created `specifications/UC-200-Specification.md`
+3. ✅ Created feature branch (wave-1-fresh-start-uc200)
+4. ✅ Gave spec to Claude Code
+5. ✅ Iterated and enhanced (added tabs, sorting, list view, persistence)
+6. ✅ Got implementation summary from Claude Code
+7. ✅ Saved as `sessions/UC-200-Session-Summary.md`
+8. ✅ Committed with detailed message
+9. ✅ Created backup branch (backup-uc200-enhanced)
+10. ✅ **Created initial CLAUDE.md with UC-200 patterns**
+11. ✅ Updated documentation
 
 **Result:** Successful first UC implementation with excellent documentation trail AND persistent context for next UCs
+
+---
+
+## Example: UC-202 Implementation (Using v1.3 Process)
+
+**Following the v1.3 process:**
+
+1. ✅ **Verified CLAUDE.md accuracy** - Found discrepancies:
+   - Handler signatures wrong (documented `COIN` objects, actual uses `coinId: string`)
+   - Non-existent utilities referenced (sortCOINs, loadCOINs, saveCOIN)
+   - Component props incomplete (missing onRemove, showCreatedDate)
+   - Wrong feedback pattern (documented toast, actual uses Alert.alert)
+
+2. ✅ **Fixed CLAUDE.md immediately** - Committed corrections separately
+
+3. ✅ Created `specifications/UC-202-Specification-v1.1.md` with accurate patterns
+
+4. ✅ Ready for Claude Code implementation with correct information
+
+**Result:** Specification based on verified reality, preventing implementation failures
 
 ---
 
@@ -600,6 +738,7 @@ As we implement more UCs, we may discover:
 - Process refinements
 - Tool improvements
 - Better CLAUDE.md maintenance strategies
+- Better verification procedures
 
 This document should be updated as we learn.
 
@@ -609,8 +748,13 @@ This document should be updated as we learn.
 
 ### **Starting New UC:**
 ```bash
-# 1. Create spec in Claude Chat (reads CLAUDE.md)
-# 2. Save to specifications/
+# 1. Verify CLAUDE.md accuracy (Step 1) ⭐ NEW in v1.3
+# Check handler signatures, utilities, patterns
+# Fix any discrepancies found
+
+# 2. Create spec in Claude Chat (reads CLAUDE.md)
+# Save to specifications/
+
 git checkout -b feature/uc-XXX
 npm start  # Verify working state
 
@@ -653,4 +797,5 @@ git push
 - ✅ Clear project history
 - ✅ Easy onboarding for future contributors
 - ✅ Reproducible development workflow
-- ✅ **Persistent context across all UC implementations** ⭐ NEW
+- ✅ **Persistent context across all UC implementations**
+- ✅ **Accurate documentation that matches reality** ⭐ NEW in v1.3
