@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, ActionSheetIOS } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Swipeable } from 'react-native-gesture-handler';
 import { COIN } from '../types';
 import { formatRelativeTime } from '../utils/dateFormatting';
 import { getStatusColor } from '../utils/statusColors';
@@ -10,9 +11,12 @@ interface COINListItemProps {
   coin: COIN;
   onPress: (coinId: string) => void;
   onToggleFavorite?: (coinId: string) => void;  // UC-202: Optional handler for favorite toggle
+  onDuplicate?: (coinId: string) => void;       // UC-201: Optional handler for duplicate action
+  onShare?: (coinId: string) => void;           // UC-201: Optional handler for share action
+  onRemove?: (coinId: string) => void;          // UC-201: Optional handler for delete action
 }
 
-export function COINListItem({ coin, onPress, onToggleFavorite }: COINListItemProps) {
+export function COINListItem({ coin, onPress, onToggleFavorite, onDuplicate, onShare, onRemove }: COINListItemProps) {
   const statusColor = getStatusColor(coin.status);
   const relativeTime = formatRelativeTime(coin.updatedAt);
   const dateLabel = 'Updated';
@@ -44,13 +48,105 @@ export function COINListItem({ coin, onPress, onToggleFavorite }: COINListItemPr
     }
   };
 
-  return (
+  // Long-press context menu
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const options = ['Open', 'Duplicate'];
+    let destructiveButtonIndex = -1;
+
+    // Add favorite toggle option
+    if (onToggleFavorite) {
+      options.push(coin.isFavorite ? 'Remove from Favorites' : 'Add to Favorites');
+    }
+
+    // Add share option
+    if (onShare) {
+      options.push('Share');
+    }
+
+    // Add delete option
+    if (onRemove) {
+      destructiveButtonIndex = options.length;
+      options.push('Delete');
+    }
+
+    options.push('Cancel');
+    const cancelButtonIndex = options.length - 1;
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        destructiveButtonIndex: destructiveButtonIndex >= 0 ? destructiveButtonIndex : undefined,
+        title: coin.name,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 0) {
+          // Open
+          onPress(coin.id);
+        } else if (buttonIndex === 1 && onDuplicate) {
+          // Duplicate
+          onDuplicate(coin.id);
+        } else if (buttonIndex === 2 && onToggleFavorite) {
+          // Toggle favorite
+          onToggleFavorite(coin.id);
+        } else if (buttonIndex === 3 && onShare) {
+          // Share
+          onShare(coin.id);
+        } else if (buttonIndex === destructiveButtonIndex && onRemove) {
+          // Delete
+          onRemove(coin.id);
+        }
+      }
+    );
+  };
+
+  // Render swipe actions (left swipe reveals actions on right)
+  const renderRightActions = () => {
+    if (!onDuplicate && !onShare && !onRemove) return null;
+
+    return (
+      <View style={styles.swipeActionsContainer}>
+        {onDuplicate && (
+          <Pressable
+            style={[styles.swipeAction, styles.duplicateAction]}
+            onPress={() => onDuplicate(coin.id)}
+          >
+            <Ionicons name="copy-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Duplicate</Text>
+          </Pressable>
+        )}
+        {onShare && (
+          <Pressable
+            style={[styles.swipeAction, styles.shareAction]}
+            onPress={() => onShare(coin.id)}
+          >
+            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Share</Text>
+          </Pressable>
+        )}
+        {onRemove && (
+          <Pressable
+            style={[styles.swipeAction, styles.deleteAction]}
+            onPress={() => onRemove(coin.id)}
+          >
+            <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Delete</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  };
+
+  const listContent = (
     <Pressable
       style={({ pressed }) => [
         styles.container,
         pressed && styles.containerPressed
       ]}
       onPress={() => onPress(coin.id)}
+      onLongPress={handleLongPress}
     >
       {/* Icon/Thumbnail */}
       <View style={styles.iconContainer}>
@@ -62,9 +158,16 @@ export function COINListItem({ coin, onPress, onToggleFavorite }: COINListItemPr
         <Text style={styles.name} numberOfLines={1}>
           {coin.name}
         </Text>
-        <Text style={styles.project} numberOfLines={1}>
-          {coin.projectName || 'No Project'}
-        </Text>
+        <View style={styles.projectRow}>
+          <Text style={styles.project} numberOfLines={1}>
+            {coin.projectName || 'No Project'}
+          </Text>
+          {coin.processState === 'future' && (
+            <View style={styles.processStateBadge}>
+              <Text style={styles.processStateText}>Future</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Right Side - Timestamp, Status & Chevron */}
@@ -105,6 +208,21 @@ export function COINListItem({ coin, onPress, onToggleFavorite }: COINListItemPr
       </View>
     </Pressable>
   );
+
+  // Only wrap with Swipeable if any swipe actions are provided
+  if (onDuplicate || onShare || onRemove) {
+    return (
+      <Swipeable
+        renderRightActions={renderRightActions}
+        overshootRight={false}
+        friction={2}
+      >
+        {listContent}
+      </Swipeable>
+    );
+  }
+
+  return listContent;
 }
 
 const styles = StyleSheet.create({
@@ -113,8 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    overflow: 'hidden',
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 8,
@@ -151,9 +268,26 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginBottom: 4,
   },
+  projectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   project: {
     fontSize: 14,
     color: '#666666',
+    flex: 1,
+  },
+  processStateBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  processStateText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   rightContent: {
     flexDirection: 'row',
@@ -179,7 +313,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 10,
     alignSelf: 'center',
-    minWidth: 75,  // Fixed width for consistent alignment
+    minWidth: 75,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -200,5 +334,31 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // UC-201: Swipe action styles
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  swipeAction: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  duplicateAction: {
+    backgroundColor: '#007AFF', // iOS blue
+  },
+  shareAction: {
+    backgroundColor: '#007AFF', // iOS blue
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30', // iOS red
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });

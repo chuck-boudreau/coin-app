@@ -1,4 +1,49 @@
 /**
+ * Project status type
+ * UC-201: Projects can be in various states
+ */
+export type ProjectStatus = 'active' | 'onHold' | 'completed' | 'archived';
+
+/**
+ * Project interface
+ * UC-201: Hierarchical organization of COINs
+ */
+export interface Project {
+  // ===== IDENTITY =====
+  id: string;                          // UUID v4
+  name: string;                        // Project name, max 100 chars
+  description?: string;                // Optional description, max 500 chars
+
+  // ===== ORGANIZATIONAL METADATA =====
+  clientOrDepartment?: string;         // e.g., "HR", "Operations", max 100 chars
+  status: ProjectStatus;               // active | onHold | completed | archived
+  colorTag: string;                    // Hex color for visual identification
+  tags?: string[];                     // Optional tags for filtering
+
+  // ===== DATES =====
+  createdDate: string;                 // ISO 8601 timestamp
+  lastModifiedDate: string;            // ISO 8601 timestamp
+  startDate?: string;                  // Optional project start date
+  endDate?: string;                    // Optional project end date
+
+  // ===== RELATIONSHIPS =====
+  coinCount: number;                   // Computed: number of COINs in this project
+
+  // ===== USER METADATA =====
+  owner: string;                       // User ID (Phase 1: single user, always same)
+
+  // Phase 2+ fields (nullable in Phase 1)
+  budget?: number;
+  customFields?: Record<string, any>;
+}
+
+/**
+ * Process state type
+ * UC-201: Distinguishes current state vs future state business processes
+ */
+export type ProcessState = 'current' | 'future';
+
+/**
  * Core COIN data model
  * Represents a single Circle of Interaction diagram
  */
@@ -6,9 +51,12 @@ export interface COIN {
   id: string;                    // UUID
   name: string;                  // Display name
   description?: string;          // Optional description
-  projectId?: string;            // Optional: which project this belongs to
-  projectName?: string;          // Denormalized for display
+  projectIds: string[];          // Array of Project IDs (multi-project support, Phase 1: max 1)
+                                 // Empty array = root-level COIN (no project)
+  projectName?: string;          // Denormalized for display (first project name)
+                                 // Optional: may be undefined for root-level COINs
   status: 'draft' | 'review' | 'approved' | 'archived';
+  processState: ProcessState;    // UC-201: 'current' or 'future' - for process evolution tracking
   createdAt: string;            // ISO 8601
   updatedAt: string;            // ISO 8601
   lastAccessedAt?: string;      // ISO 8601 - when user last opened it
@@ -71,6 +119,8 @@ export interface COINCardProps {
   onPress: (coinId: string) => void;
   onRemove: (coinId: string) => void;
   onToggleFavorite?: (coinId: string) => void;  // UC-202: Optional handler for favorite toggle
+  onDuplicate?: (coinId: string) => void;       // UC-201: Optional handler for duplicate action
+  onShare?: (coinId: string) => void;           // UC-201: Optional handler for share action
 }
 
 /**

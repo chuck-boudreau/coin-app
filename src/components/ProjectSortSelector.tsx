@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-export type SortOption = 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc' | 'created-newest' | 'created-oldest';
+export type ProjectSortOption =
+  | 'name-asc'           // Name (A-Z)
+  | 'name-desc'          // Name (Z-A)
+  | 'status-asc'         // Status (A-Z)
+  | 'status-desc';       // Status (Z-A)
 
-interface SortSelectorProps {
-  currentSort: SortOption;
-  onSortChange: (sort: SortOption) => void;
+interface ProjectSortSelectorProps {
+  currentSort: ProjectSortOption;
+  onSortChange: (sort: ProjectSortOption) => void;
   rightAction?: React.ReactNode;
 }
 
@@ -32,15 +36,13 @@ function SortButton({ label, isActive, onPress }: SortButtonProps) {
   );
 }
 
-export function SortSelector({ currentSort, onSortChange, rightAction }: SortSelectorProps) {
+export function ProjectSortSelector({ currentSort, onSortChange, rightAction }: ProjectSortSelectorProps) {
   // Determine which field is active and its direction
   const isNameActive = currentSort === 'name-asc' || currentSort === 'name-desc';
   const isStatusActive = currentSort === 'status-asc' || currentSort === 'status-desc';
-  const isCreatedActive = currentSort === 'created-newest' || currentSort === 'created-oldest';
 
   const nameDirection = currentSort === 'name-asc' ? '↑' : '↓';
   const statusDirection = currentSort === 'status-asc' ? '↑' : '↓';
-  const createdDirection = currentSort === 'created-newest' ? '↓' : '↑'; // Newest = ↓, Oldest = ↑
 
   // Handle button press - toggle direction if active, otherwise activate with default direction
   const handleNamePress = () => {
@@ -63,16 +65,6 @@ export function SortSelector({ currentSort, onSortChange, rightAction }: SortSel
     }
   };
 
-  const handleCreatedPress = () => {
-    if (isCreatedActive) {
-      // Toggle direction
-      onSortChange(currentSort === 'created-newest' ? 'created-oldest' : 'created-newest');
-    } else {
-      // Activate with default (newest first = descending)
-      onSortChange('created-newest');
-    }
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.leftContent}>
@@ -87,11 +79,6 @@ export function SortSelector({ currentSort, onSortChange, rightAction }: SortSel
             label={`Status ${isStatusActive ? statusDirection : '↑'}`}
             isActive={isStatusActive}
             onPress={handleStatusPress}
-          />
-          <SortButton
-            label={`Updated ${isCreatedActive ? createdDirection : '↓'}`}
-            isActive={isCreatedActive}
-            onPress={handleCreatedPress}
           />
         </View>
       </View>

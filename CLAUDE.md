@@ -1,9 +1,9 @@
 # CLAUDE.md - Persistent Context for Claude Code
 
-**Last Updated:** October 30, 2025 after UC-202 implementation
+**Last Updated:** October 31, 2025 after UC-201 implementation
 **Project:** COIN App - Business Process Design Tool
 **Platform:** React Native + Expo (Phase 1: iPad only)
-**Current Branch:** main (UC-202 merged)
+**Current Branch:** main (UC-201 complete)
 
 **⚠️ Prerequisites:** Read `CLAUDE_CODE_CONTEXT.md` first for React Native fundamentals
 
@@ -497,50 +497,139 @@ const { sortOption, setSortOption } = useCOINs();
 
 ---
 
+### UC-201: View Projects (Projects Tab) ✔️ COMPLETE
+
+**Status:** Implemented and Accepted
+**Date:** October 31, 2025
+**Session Summary:** `sessions/UC-201-Session-Summary.md`
+
+**Files Created:**
+- 4 components (`ProjectCard`, `ProjectSortSelector`, `EmptyProjectListState`, `EmptyProjectDetailState`)
+
+**Files Modified:**
+- Navigation (`App.tsx` - added ProjectsStack, moved all header configs, fixed title centering)
+- Context (`COINContext.tsx` - added projectSortOption state)
+- Screens (`ProjectsScreen.tsx` full implementation, `ProjectDetailScreen.tsx` full implementation, `RecentsScreen.tsx`, `FavoritesScreen.tsx` - header cleanup)
+- Components (`COINCard.tsx`, `COINListItem.tsx` - fixed corner artifacts)
+- Types (`types/index.ts` - added processState field)
+- Mock data (`mockData.ts` - added processState field)
+
+**Patterns Established:**
+
+1. **Separate Sort Components Pattern**
+   - `ProjectSortSelector` for projects (4 options: Name, Status)
+   - `SortSelector` for COINs (6 options: Name, Status, Updated)
+   - Different entities need different sorting options
+   - **FOLLOW THIS PATTERN** when entities have different sortable fields
+
+2. **Static Header Configuration Pattern**
+   - ALL header buttons configured in `Stack.Screen options` (not useLayoutEffect)
+   - Eliminates screen flicker on tab switch
+   - Headers fully configured before rendering
+   - **MUST FOLLOW THIS** for all navigation screens
+   ```typescript
+   <Stack.Screen
+     name="Screen"
+     options={{
+       headerLeft: () => null,  // Centers title on main tabs
+       headerRight: () => <Button />  // Configured statically
+     }}
+   />
+   ```
+
+3. **iOS 26+ Resizable Window Support**
+   - Dynamic back button padding for windowed mode
+   - Only applies to screens WITH back buttons
+   - Main tab screens use `headerLeft: () => null` for centering
+   - **FOLLOW THIS PATTERN** for iOS iPad window control compatibility
+   ```typescript
+   const isResizableWindow = Platform.OS === 'ios' &&
+     parseInt(Platform.Version, 10) >= 26 &&
+     width < screenWidth - 10;
+
+   headerLeftContainerStyle: {
+     paddingLeft: isResizableWindow ? 60 : 0,
+   }
+   ```
+
+4. **Card Corner Artifact Fix Pattern**
+   - Remove `borderWidth` and `borderColor` from cards
+   - Add `overflow: 'hidden'` to clip at rounded corners
+   - Rely on shadows only for card definition
+   - **APPLY THIS** to all cards with rounded corners
+   ```typescript
+   card: {
+     backgroundColor: '#FFFFFF',
+     borderRadius: 12,
+     overflow: 'hidden',  // ← Critical for clean corners
+     shadowColor: '#000',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.15,
+     // NO borderWidth or borderColor
+   }
+   ```
+
+5. **Group by Project Pattern**
+   - Added to Recents and Favorites tabs
+   - Section headers with project names
+   - "No Project" always appears last
+   - Sticky headers for easy scanning
+   - **REUSE THIS** for any grouped list views
+
+6. **Project Detail Pattern**
+   - Metadata bar showing project info
+   - Drill-down from list to detail screen
+   - Shows all COINs within project
+   - Empty state with CTAs when no COINs
+   - **FOLLOW THIS PATTERN** for other detail screens
+
+**Integration Points:**
+
+✅ **All three tabs complete:**
+- Recents: View recent COINs, group by project
+- Favorites: View favorited COINs, group by project
+- Projects: View projects list, drill down to see project COINs
+
+✅ **UC-100 (Create COIN) ready:**
+- Header "+" buttons in place on all tabs
+- Just needs modal implementation
+
+✅ **UC-101 (COIN Editor) ready:**
+- Card press handlers in place
+- Navigation structure ready
+
+**Critical Constraints:**
+
+⚠️ **Header configuration:**
+- MUST use static `Stack.Screen options` (not useLayoutEffect)
+- Main tab screens MUST have `headerLeft: () => null` for centered titles
+- Detail screens with back buttons need dynamic padding for iOS 26+
+
+⚠️ **Card styling:**
+- NO borders on cards (causes corner artifacts)
+- MUST use `overflow: 'hidden'` with borderRadius
+- Shadows provide card definition
+
+⚠️ **Visual hierarchy:**
+- Headers: White (#FFFFFF)
+- Toolbars: White (#FFFFFF)
+- Metadata bars: White (#FFFFFF)
+- Section headers: Match body (#E5E5EA)
+- Body background: #E5E5EA
+- Cards: White with 0.15 shadow opacity
+
+---
+
 ## 🚧 Current UC Being Implemented
 
-### UC-201: View Projects (Projects Tab) ← NEXT
+### Next UC: To Be Determined
 
-**Specification:** `specifications/UC-201-Specification.md` (to be created by Chuck)
+**Possible next UCs:**
+- **UC-100**: Create COIN Modal - Header "+" buttons ready
+- **UC-101**: COIN Editor Screen - Card press handlers ready
+- **UC-210**: Add COINs to Project - Navigation structure ready
 
-**What this UC needs to do:**
-- Implement `ProjectsScreen.tsx` (currently placeholder)
-- Display COINs grouped by project
-- Project-level actions (view all COINs in project, project metadata)
-- Potentially allow favoriting entire projects
-
-**Integration Requirements:**
-
-✅ **REUSE these components (DO NOT recreate):**
-- `COINCard` - Already has star toggle, use as-is
-- `COINListItem` - Already has star toggle, use as-is
-- `SortSelector` - Use exactly as-is (6 sort options)
-- `ViewToggle` - Use exactly as-is
-- `EmptyRecentsState` - Follow pattern for empty project state
-
-✅ **REUSE this context:**
-- `COINContext` - For shared state management
-- Use `coins` array, filter by `projectId`
-- Use `sortOption` for shared sort preference
-- Use `toggleFavorite` if projects support favorites
-
-✅ **DO NOT MODIFY these files:**
-- `src/utils/mockData.ts` - Unless spec says to add projects
-- `src/utils/dateFormatting.ts` - Not needed
-- `src/utils/statusColors.ts` - Not needed
-- `RecentsScreen.tsx` - Must continue to work
-- `FavoritesScreen.tsx` - Must continue to work
-
-✅ **FOLLOW these patterns:**
-- Same responsive grid (2 cols portrait / 3 cols landscape)
-- Same AsyncStorage pattern for view mode persistence (per-tab key)
-- Shared sort option from COINContext (no local state)
-- Same empty state pattern (icon + message + CTAs)
-
-**New patterns UC-201 may establish:**
-- Project grouping/hierarchy display
-- Expandable sections for projects
-- Project-level metadata display
+All three core tabs (Recents, Favorites, Projects) are now complete. Next UC will focus on COIN creation and editing workflows.
 
 ---
 
@@ -890,6 +979,6 @@ const Border = {
 
 **This file is your persistent memory. Read it every time before coding.**
 
-**Last UC Completed:** UC-202 (Favorites Tab) ✔️
-**Next UC:** UC-201 (Projects Tab) 🚧
-**Updated:** October 30, 2025
+**Last UC Completed:** UC-201 (Projects Tab) ✔️
+**Next UC:** To Be Determined (UC-100, UC-101, or UC-210)
+**Updated:** October 31, 2025

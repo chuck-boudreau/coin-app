@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   FlatList,
+  SectionList,
+  Text,
   StyleSheet,
   useWindowDimensions,
   RefreshControl,
@@ -12,20 +14,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { COINCard } from '../components/COINCard';
 import { COINListItem } from '../components/COINListItem';
 import { EmptyRecentsState } from '../components/EmptyRecentsState';
-import { FloatingActionButton } from '../components/FloatingActionButton';
-import { NavigationHeader } from '../components/NavigationHeader';
 import { SortSelector, SortOption } from '../components/SortSelector';
-import { ViewToggle, ViewMode } from '../components/ViewToggle';
+import { ViewToggle } from '../components/ViewToggle';
+import { GroupToggle } from '../components/GroupToggle';
 import { useCOINs } from '../contexts/COINContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const VIEW_MODE_KEY = '@design_the_what:view_mode';
+import { COIN } from '../types';
 
 export function RecentsScreen() {
   const { width, height } = useWindowDimensions();
-  const { coins, toggleFavorite, updateCOIN, sortOption, setSortOption } = useCOINs();
+  const { coins, toggleFavorite, duplicateCOIN, updateCOIN, sortOption, setSortOption, viewMode, setViewMode, groupByProject, setGroupByProject } = useCOINs();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   // Simplified column layout prioritizing preview size over quantity
   const GAP = 16;
@@ -46,36 +44,9 @@ export function RecentsScreen() {
 
   const horizontalPadding = PADDING;
 
-  // Load view mode preference when tab comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadViewPreference();
-    }, [])
-  );
-
-  const loadViewPreference = async () => {
-    try {
-      const savedView = await AsyncStorage.getItem(VIEW_MODE_KEY);
-      if (savedView) {
-        setViewMode(savedView as ViewMode);
-      }
-    } catch (error) {
-      console.log('Error loading view preference:', error);
-    }
-  };
-
   const handleSortChange = (newSort: SortOption) => {
     // Sort state managed by COINContext - updates immediately across tabs
     setSortOption(newSort);
-  };
-
-  const handleViewModeChange = async (newMode: ViewMode) => {
-    setViewMode(newMode);
-    try {
-      await AsyncStorage.setItem(VIEW_MODE_KEY, newMode);
-    } catch (error) {
-      console.log('Error saving view mode:', error);
-    }
   };
 
   // Filter for recent COINs (has lastAccessedAt)
@@ -97,12 +68,20 @@ export function RecentsScreen() {
         return sorted.sort((a, b) => b.name.localeCompare(a.name));
 
       case 'status-asc':
-        // Sort by status A-Z (alphabetical: approved, archived, draft, review)
-        return sorted.sort((a, b) => a.status.localeCompare(b.status));
+        // Sort by status A-Z, then by name A-Z within each status
+        return sorted.sort((a, b) => {
+          const statusCompare = a.status.localeCompare(b.status);
+          if (statusCompare !== 0) return statusCompare;
+          return a.name.localeCompare(b.name); // Secondary: alphabetical
+        });
 
       case 'status-desc':
-        // Sort by status Z-A (alphabetical reverse: review, draft, archived, approved)
-        return sorted.sort((a, b) => b.status.localeCompare(a.status));
+        // Sort by status Z-A, then by name A-Z within each status
+        return sorted.sort((a, b) => {
+          const statusCompare = b.status.localeCompare(a.status);
+          if (statusCompare !== 0) return statusCompare;
+          return a.name.localeCompare(b.name); // Secondary: alphabetical
+        });
 
       case 'created-newest':
         // Sort by createdAt (newest first)
@@ -124,6 +103,54 @@ export function RecentsScreen() {
         return sorted;
     }
   }, [recentCOINs, sortOption]);
+
+  // Helper function to chunk array into groups of size n
+  const chunkArray = <T,>(array: T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size));
+    }
+    return chunks;
+  };
+
+  // Group COINs by project when grouping is enabled
+  const groupedSections = useMemo(() => {
+    if (!groupByProject) return [];
+
+    // Group COINs by project name
+    const projectGroups = sortedCOINs.reduce((acc, coin) => {
+      const projectName = coin.projectName || 'No Project';
+      if (!acc[projectName]) {
+        acc[projectName] = [];
+      }
+      acc[projectName].push(coin);
+      return acc;
+    }, {} as Record<string, COIN[]>);
+
+    // Convert to sections array and sort projects alphabetically
+    return Object.entries(projectGroups)
+      .map(([projectName, data]) => ({
+        title: projectName,
+        data,
+      }))
+      .sort((a, b) => {
+        // "No Project" always last
+        if (a.title === 'No Project') return 1;
+        if (b.title === 'No Project') return -1;
+        return a.title.localeCompare(b.title);
+      });
+  }, [sortedCOINs, groupByProject]);
+
+  // Chunk grouped sections into rows for grid view
+  const groupedSectionsChunked = useMemo(() => {
+    if (!groupByProject || viewMode !== 'grid') return groupedSections;
+
+    // Chunk each section's data into rows of numColumns
+    return groupedSections.map(section => ({
+      title: section.title,
+      data: chunkArray(section.data, numColumns),
+    }));
+  }, [groupedSections, groupByProject, viewMode, numColumns]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -168,13 +195,14 @@ export function RecentsScreen() {
     toggleFavorite(coinId);
   };
 
-  const handleCreateCOIN = () => {
-    // TODO: Navigate to UC-100 (Create COIN) when implemented
-    Alert.alert(
-      'Create COIN',
-      'Would open Create COIN modal\n\n(UC-100 not yet implemented - this is UC-200 only)',
-      [{ text: 'OK' }]
-    );
+  const handleDuplicate = (coinId: string) => {
+    // Create a copy of the COIN
+    duplicateCOIN(coinId);
+  };
+
+  const handleShare = (coinId: string) => {
+    // TODO: Implement share functionality (UC-future)
+    Alert.alert('Share COIN', 'Share functionality coming soon!', [{ text: 'OK' }]);
   };
 
   const handleBrowseProjects = () => {
@@ -190,7 +218,7 @@ export function RecentsScreen() {
   const hasAnyCOINs = coins.length > 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       {isEmpty ? (
         <EmptyRecentsState
           hasAnyCOINs={hasAnyCOINs}
@@ -199,14 +227,89 @@ export function RecentsScreen() {
         />
       ) : (
         <View style={styles.contentContainer}>
-          <NavigationHeader
+          <SortSelector
+            currentSort={sortOption}
+            onSortChange={handleSortChange}
             rightAction={
-              <ViewToggle viewMode={viewMode} onToggle={handleViewModeChange} />
+              <View style={styles.rightActions}>
+                <GroupToggle groupByProject={groupByProject} onToggle={setGroupByProject} />
+                <ViewToggle viewMode={viewMode} onToggle={setViewMode} />
+              </View>
             }
           />
-          <SortSelector currentSort={sortOption} onSortChange={handleSortChange} />
 
-          {viewMode === 'grid' ? (
+          {groupByProject ? (
+            // Grouped by project view
+            viewMode === 'grid' ? (
+              <SectionList
+                sections={groupedSectionsChunked}
+                keyExtractor={(item, index) => `row-${index}`}
+                renderItem={({ item: row }) => (
+                  <View style={[styles.columnWrapper, { marginBottom: 16 }]}>
+                    {row.map((coin: COIN) => (
+                      <View key={coin.id} style={{ width: cardWidth }}>
+                        <COINCard
+                          coin={coin}
+                          onPress={handleCardPress}
+                          onRemove={handleRemoveFromRecents}
+                          onToggleFavorite={handleToggleFavorite}
+                          onDuplicate={handleDuplicate}
+                          onShare={handleShare}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
+                renderSectionHeader={({ section: { title } }) => (
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>{title}</Text>
+                  </View>
+                )}
+                key={`grid-grouped-${numColumns}`}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={true}
+                stickySectionHeadersEnabled={true}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isRefreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#007AFF"
+                  />
+                }
+              />
+            ) : (
+              <SectionList
+                sections={groupedSections}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <COINListItem
+                    coin={item}
+                    onPress={handleCardPress}
+                    onToggleFavorite={handleToggleFavorite}
+                    onDuplicate={handleDuplicate}
+                    onShare={handleShare}
+                    onRemove={handleRemoveFromRecents}
+                  />
+                )}
+                renderSectionHeader={({ section: { title } }) => (
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionHeaderText}>{title}</Text>
+                  </View>
+                )}
+                contentContainerStyle={styles.listViewContent}
+                showsVerticalScrollIndicator={true}
+                stickySectionHeadersEnabled={true}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isRefreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#007AFF"
+                  />
+                }
+              />
+            )
+          ) : viewMode === 'grid' ? (
+            // Flat grid view
             <FlatList
               data={sortedCOINs}
               renderItem={({ item }) => (
@@ -216,6 +319,8 @@ export function RecentsScreen() {
                     onPress={handleCardPress}
                     onRemove={handleRemoveFromRecents}
                     onToggleFavorite={handleToggleFavorite}
+                    onDuplicate={handleDuplicate}
+                    onShare={handleShare}
                   />
                 </View>
               )}
@@ -241,6 +346,9 @@ export function RecentsScreen() {
                   coin={item}
                   onPress={handleCardPress}
                   onToggleFavorite={handleToggleFavorite}
+                  onDuplicate={handleDuplicate}
+                  onShare={handleShare}
+                  onRemove={handleRemoveFromRecents}
                 />
               )}
               keyExtractor={(item) => item.id}
@@ -257,7 +365,6 @@ export function RecentsScreen() {
           )}
         </View>
       )}
-      <FloatingActionButton onPress={handleCreateCOIN} />
     </SafeAreaView>
   );
 }
@@ -270,6 +377,11 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   listContent: {
     padding: 16,
     paddingBottom: 81,
@@ -279,7 +391,19 @@ const styles = StyleSheet.create({
     paddingBottom: 97,
   },
   columnWrapper: {
+    flexDirection: 'row',
     justifyContent: 'flex-start',
     gap: 16,
+  },
+  sectionHeader: {
+    backgroundColor: '#E5E5EA',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
   },
 });

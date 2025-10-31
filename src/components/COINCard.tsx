@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated, ActionSheetIOS } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { Swipeable } from 'react-native-gesture-handler';
 import { COINCardProps } from '../types';
 import { formatRelativeTime } from '../utils/dateFormatting';
 import { getStatusColor } from '../utils/statusColors';
 
-export function COINCard({ coin, onPress, onToggleFavorite }: COINCardProps) {
+export function COINCard({ coin, onPress, onToggleFavorite, onDuplicate, onShare, onRemove }: COINCardProps) {
   const statusColor = getStatusColor(coin.status);
   const relativeTime = formatRelativeTime(coin.updatedAt);
   const dateLabel = 'Updated';
@@ -38,13 +39,105 @@ export function COINCard({ coin, onPress, onToggleFavorite }: COINCardProps) {
     }
   };
 
-  return (
+  // Long-press context menu
+  const handleLongPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const options = ['Open', 'Duplicate'];
+    let destructiveButtonIndex = -1;
+
+    // Add favorite toggle option
+    if (onToggleFavorite) {
+      options.push(coin.isFavorite ? 'Remove from Favorites' : 'Add to Favorites');
+    }
+
+    // Add share option
+    if (onShare) {
+      options.push('Share');
+    }
+
+    // Add delete option
+    if (onRemove) {
+      destructiveButtonIndex = options.length;
+      options.push('Delete');
+    }
+
+    options.push('Cancel');
+    const cancelButtonIndex = options.length - 1;
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options,
+        cancelButtonIndex,
+        destructiveButtonIndex: destructiveButtonIndex >= 0 ? destructiveButtonIndex : undefined,
+        title: coin.name,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === 0) {
+          // Open
+          onPress(coin.id);
+        } else if (buttonIndex === 1 && onDuplicate) {
+          // Duplicate
+          onDuplicate(coin.id);
+        } else if (buttonIndex === 2 && onToggleFavorite) {
+          // Toggle favorite
+          onToggleFavorite(coin.id);
+        } else if (buttonIndex === 3 && onShare) {
+          // Share
+          onShare(coin.id);
+        } else if (buttonIndex === destructiveButtonIndex && onRemove) {
+          // Delete
+          onRemove(coin.id);
+        }
+      }
+    );
+  };
+
+  // Render swipe actions (left swipe reveals actions on right)
+  const renderRightActions = () => {
+    if (!onDuplicate && !onShare && !onRemove) return null;
+
+    return (
+      <View style={styles.swipeActionsContainer}>
+        {onDuplicate && (
+          <Pressable
+            style={[styles.swipeAction, styles.duplicateAction]}
+            onPress={() => onDuplicate(coin.id)}
+          >
+            <Ionicons name="copy-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Duplicate</Text>
+          </Pressable>
+        )}
+        {onShare && (
+          <Pressable
+            style={[styles.swipeAction, styles.shareAction]}
+            onPress={() => onShare(coin.id)}
+          >
+            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Share</Text>
+          </Pressable>
+        )}
+        {onRemove && (
+          <Pressable
+            style={[styles.swipeAction, styles.deleteAction]}
+            onPress={() => onRemove(coin.id)}
+          >
+            <Ionicons name="trash-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.swipeActionText}>Delete</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  };
+
+  const cardContent = (
     <Pressable
       style={({ pressed }) => [
         styles.card,
         pressed && styles.cardPressed
       ]}
       onPress={() => onPress(coin.id)}
+      onLongPress={handleLongPress}
     >
       {/* Thumbnail Area - Full preview without overlay */}
       <View style={styles.thumbnailContainer}>
@@ -93,9 +186,16 @@ export function COINCard({ coin, onPress, onToggleFavorite }: COINCardProps) {
         <Text style={styles.coinName} numberOfLines={2}>
           {coin.name}
         </Text>
-        <Text style={styles.projectName} numberOfLines={1}>
-          {coin.projectName || 'No Project'}
-        </Text>
+        <View style={styles.metadataRow}>
+          <Text style={styles.projectName} numberOfLines={1}>
+            {coin.projectName || 'No Project'}
+          </Text>
+          {coin.processState === 'future' && (
+            <View style={styles.processStateBadge}>
+              <Text style={styles.processStateText}>Future</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.timestamp}>
           <Text style={styles.dateLabel}>{dateLabel}: </Text>
           {relativeTime}
@@ -103,14 +203,28 @@ export function COINCard({ coin, onPress, onToggleFavorite }: COINCardProps) {
       </View>
     </Pressable>
   );
+
+  // Only wrap with Swipeable if any swipe actions are provided
+  if (onDuplicate || onShare || onRemove) {
+    return (
+      <Swipeable
+        renderRightActions={renderRightActions}
+        overshootRight={false}
+        friction={2}
+      >
+        {cardContent}
+      </Swipeable>
+    );
+  }
+
+  return cardContent;
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -162,11 +276,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 6,
   },
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
   projectName: {
     fontSize: 13,
     color: '#666666',
     fontWeight: '500',
-    marginBottom: 4,
+    flex: 1,
+  },
+  processStateBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  processStateText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   timestamp: {
     fontSize: 12,
@@ -196,5 +327,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
+  },
+  // UC-201: Swipe action styles
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  swipeAction: {
+    width: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  duplicateAction: {
+    backgroundColor: '#007AFF', // iOS blue
+  },
+  shareAction: {
+    backgroundColor: '#007AFF', // iOS blue
+  },
+  deleteAction: {
+    backgroundColor: '#FF3B30', // iOS red
+  },
+  swipeActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
