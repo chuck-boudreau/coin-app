@@ -1,7 +1,7 @@
 # COIN App Development Process
 
-**Version:** 1.4
-**Last Updated:** October 30, 2025 (after UC-202)
+**Version:** 1.3  
+**Last Updated:** October 30, 2025  
 **Purpose:** Standard workflow for implementing use cases with Claude Code
 
 ---
@@ -15,11 +15,7 @@ This document defines the repeatable process for implementing use cases in the C
 2. **Session Summary** (after implementation) - Record of what was actually built
 3. **CLAUDE.md** (living document) - Claude Code's persistent memory across all UCs
 
-**Critical Additions:**
-- **v1.3:** CLAUDE.md verification procedures to catch documentation drift before creating specifications
-- **v1.4:**
-  - CLAUDE.md updates integrated into implementation commit (Step 4b) for atomic documentation
-  - **Claude Code handles ALL git operations** - Chuck reviews and approves, Claude Code executes
+**Critical v1.3 Addition:** CLAUDE.md verification procedures to catch documentation drift before creating specifications.
 
 ---
 
@@ -27,9 +23,8 @@ This document defines the repeatable process for implementing use cases in the C
 
 ### **Step 1: Create Specification (with Claude Chat)**
 
-**When:** Before implementation begins
-**Tool:** Claude Chat (conversation with Chuck)
-**Who:** Chuck + Claude Chat
+**When:** Before implementation begins  
+**Tool:** Claude Chat (conversation with Chuck)  
 **Output:** `specifications/UC-XXX-Specification.md`
 
 **Process:**
@@ -44,73 +39,97 @@ This document defines the repeatable process for implementing use cases in the C
 4. **Claude Chat VERIFIES CLAUDE.md accuracy:** ⚠️ CRITICAL STEP
 
    **Why This Matters:**
-
+   
    CLAUDE.md can drift from actual code reality over time. Creating a specification based on wrong information causes implementation failures and wasted time.
-
+   
    **Verification Checklist - Do This Before Writing Spec:**
-
+   
    Open CLAUDE.md and actual codebase side-by-side, then verify:
-
+   
    **A. Component Interfaces:**
    - [ ] Handler signatures match actual code
      - Open actual component files (`src/components/*.tsx`)
      - Check: Do handlers take `coinId: string` or `coin: COIN`?
      - Update CLAUDE.md if wrong
-
+   
    - [ ] Component props are complete
      - Check actual TypeScript interfaces
      - Verify all props documented
      - Add missing props to CLAUDE.md (e.g., `onRemove`, `showCreatedDate`)
-
+   
    **B. Utilities & Functions:**
    - [ ] Referenced utilities actually exist
      - Check `src/utils/` directory
      - Verify functions mentioned in CLAUDE.md are real
      - Remove references to non-existent utilities
-
+   
    - [ ] Storage patterns match implementation
      - Check actual screen files (e.g., `RecentsScreen.tsx`)
      - Verify: Inline AsyncStorage or utility functions?
      - Update CLAUDE.md to match reality
-
+   
    - [ ] Sorting patterns match implementation
      - Check actual sort implementations
      - Verify: Inline with useMemo or utility function?
      - Update CLAUDE.md to match reality
-
+   
    **C. Patterns & Conventions:**
    - [ ] Feedback pattern documented correctly
      - Check: `Alert.alert()` or toast library?
      - Verify what's actually used in existing screens
      - Update if wrong
-
+   
    - [ ] AsyncStorage keys list is complete
      - Search codebase for `@design_the_what:`
      - Add any missing keys to CLAUDE.md
-
+   
    **D. Integration Points:**
    - [ ] Reusable components listed correctly
      - Check `src/components/` directory
      - Verify components mentioned exist
      - Update component descriptions if changed
-
+   
    **Process When Discrepancies Found:**
-
+   
    ```bash
    # 1. Fix CLAUDE.md immediately (don't wait)
    # 2. Commit separately with clear message
    cd ~/Projects/coin-app
    git add CLAUDE.md
    git commit -m "fix(docs): Correct CLAUDE.md - [what was wrong]
-
+   
    Found during: UC-XXX specification creation
    Issue: [describe discrepancy]
    Fixed: [describe correction]"
    git push
-
+   
    # 3. Continue with UC specification
    ```
-
+   
+   **Example Real Discrepancies (from UC-202):**
+   
+   ❌ **WRONG in CLAUDE.md:**
+   ```typescript
+   onPress: (coin: COIN) => void
+   ```
+   
+   ✅ **ACTUAL in code:**
+   ```typescript
+   onPress: (coinId: string) => void
+   ```
+   
+   ❌ **WRONG in CLAUDE.md:**
+   "Import and use sortCOINs utility"
+   
+   ✅ **ACTUAL in code:**
+   No sortCOINs utility exists - sorting is inline with useMemo
+   
+   ❌ **WRONG in CLAUDE.md:**
+   "Use showToast() for feedback"
+   
+   ✅ **ACTUAL in code:**
+   Project uses `Alert.alert()` - no toast library
+   
    **Signs CLAUDE.md Needs Verification:**
    - 🚩 Specification references utilities that don't exist
    - 🚩 Claude Code generates code that doesn't compile
@@ -118,9 +137,9 @@ This document defines the repeatable process for implementing use cases in the C
    - 🚩 Time gap since last UC (>2 weeks)
    - 🚩 New wave starting (green field moment)
    - 🚩 You're unsure about documented patterns
-
+   
    **Best Practice:**
-
+   
    Always verify CLAUDE.md accuracy at the START of each new wave. This catches accumulated drift before it affects multiple UCs.
 
 5. Claude Chat creates comprehensive specification including:
@@ -139,14 +158,13 @@ This document defines the repeatable process for implementing use cases in the C
 
 ### **Step 2: Create Feature Branch**
 
-**When:** Before giving spec to Claude Code
-**Tool:** Claude Code (uses Bash tool)
-**Who:** Claude Code executes, Chuck approves
+**When:** Before giving spec to Claude Code  
+**Tool:** Git command line
 
 ```bash
 cd ~/Projects/coin-app
 
-# Create feature branch from main
+# Create feature branch from current working branch
 git checkout -b feature/uc-XXX
 
 # Verify clean state
@@ -154,16 +172,15 @@ git status
 npm start  # Test that current code still works
 ```
 
-**Branch Naming:** `feature/uc-XXX` (e.g., `feature/uc-202`)
+**Branch Naming:** `feature/uc-XXX` (e.g., `feature/uc-100`)
 
 ---
 
 ### **Step 3: Implement with Claude Code**
 
-**When:** After specification is created
-**Tool:** Claude Code (AI pair programmer)
-**Who:** Claude Code implements, Chuck tests and requests iterations
-**Input:** UC-XXX-Specification.md
+**When:** After specification is created  
+**Tool:** Claude Code (AI pair programmer)  
+**Input:** UC-XXX-Specification.md  
 
 **Process:**
 1. Start Claude Code in project directory:
@@ -172,12 +189,12 @@ npm start  # Test that current code still works
    npx @anthropic-ai/claude-code
    ```
 
-2. Chuck pastes complete specification into Claude Code
+2. Paste complete specification into Claude Code
    - **Note:** Claude Code automatically reads CLAUDE.md for context
 
 3. Iterate with Claude Code:
    - Claude Code generates initial implementation
-   - Chuck reviews and tests on iPad
+   - Chuck reviews and tests
    - Chuck requests enhancements/fixes
    - Claude Code refines
    - Repeat until satisfied
@@ -192,86 +209,43 @@ npm start  # Test that current code still works
 
 ---
 
-### **Step 4: Generate Documentation (Claude Code does this)**
+### **Step 4: Get Implementation Summary (from Claude Code)**
 
-**When:** After implementation is complete and tested
-**Tool:** Claude Code
-**Who:** Claude Code generates, Chuck reviews
-**Output:** Session summary + Updated CLAUDE.md
+**When:** After implementation is complete and tested  
+**Tool:** Claude Code  
+**Output:** Implementation summary document
 
 **Process:**
+1. In Claude Code, ask:
+   ```
+   Please create a comprehensive implementation summary including:
+   1. All files created
+   2. All features implemented
+   3. All enhancements beyond the original specification
+   4. Current state of the application
+   5. Key design decisions made
+   6. What's pending for future UCs
+   
+   Format as markdown with clear sections.
+   ```
 
-#### **Step 4a: Generate Session Summary**
+2. Claude Code provides detailed summary
 
-Chuck asks Claude Code:
-```
-Please create a comprehensive implementation summary including:
-1. All files created
-2. All features implemented
-3. All enhancements beyond the original specification
-4. Current state of the application
-5. Key design decisions made
-6. What's pending for future UCs
+3. Copy the summary
 
-Format as markdown with clear sections.
-```
+4. Save as `~/Projects/coin-app/sessions/UC-XXX-Session-Summary.md`
 
-Claude Code:
-1. Generates detailed summary
-2. Saves as `~/Projects/coin-app/sessions/UC-XXX-Session-Summary.md`
-
-**Naming Convention:** `UC-XXX-Session-Summary.md` (e.g., `UC-202-Session-Summary.md`)
-
-#### **Step 4b: Update CLAUDE.md** ⭐ CRITICAL
-
-**Why now instead of after merge?** CLAUDE.md updates should be atomic with the UC implementation. Committing them together ensures documentation never lags behind code.
-
-Chuck asks Claude Code:
-```
-Please update CLAUDE.md with UC-XXX patterns. Make the changes directly.
-```
-
-Claude Code:
-1. Reads session summary
-2. Updates CLAUDE.md sections:
-   - [ ] Adds UC-XXX to "Implemented Use Cases" section
-   - [ ] Updates "Current UC Being Implemented" to next UC
-   - [ ] Documents new patterns
-   - [ ] Adds new components/files to structure
-   - [ ] Lists integration points for future UCs
-   - [ ] Documents critical constraints
-   - [ ] Updates header (date, branch)
-   - [ ] Updates footer (last UC completed)
-
-Chuck reviews the CLAUDE.md changes for accuracy.
-
-**Note:** CLAUDE.md updates will be committed together with the implementation in Step 5.
+**Naming Convention:** `UC-XXX-Session-Summary.md` (e.g., `UC-200-Session-Summary.md`)
 
 ---
 
-### **Step 5: Commit and Push (Claude Code does this)**
+### **Step 5: Commit and Push**
 
-**When:** After session summary is saved AND CLAUDE.md is updated
-**Tool:** Claude Code (uses Bash tool)
-**Who:** Claude Code executes, Chuck reviews what's being committed
+**When:** After session summary is saved  
+**Tool:** Git
 
-**What gets committed together:**
-- ✅ All implementation code
-- ✅ Session summary (`sessions/UC-XXX-Session-Summary.md`)
-- ✅ **Updated CLAUDE.md** (from Step 4b)
-- ✅ Any other documentation updates
-
-Chuck asks Claude Code:
-```
-Please commit all UC-XXX changes with a detailed commit message and push to the feature branch.
-```
-
-Claude Code executes:
 ```bash
 cd ~/Projects/coin-app
-
-# Verify what's changed
-git status
 
 # Add all changes including documentation
 git add .
@@ -293,60 +267,140 @@ Enhancements Beyond Spec:
 Files: [X] files created/modified
 Lines: ~[X] lines
 
-See: sessions/UC-XXX-Session-Summary.md for complete details
-
-🤖 Generated with Claude Code"
+See: sessions/UC-XXX-Session-Summary.md for complete details"
 
 # Push to GitHub
 git push origin feature/uc-XXX
 ```
 
-**Why commit CLAUDE.md with implementation:**
-- ✅ Documentation stays in sync with code
-- ✅ Single atomic commit for UC completion
-- ✅ Easy to revert if needed (code + docs together)
-- ✅ Next UC starts with updated context immediately
-
 ---
 
-### **Step 6: Merge to Main (Claude Code does this)**
+### **Step 6: Merge to Main Branch**
 
-**When:** After verifying everything works
-**Tool:** Claude Code (uses Bash tool)
-**Who:** Claude Code executes, Chuck approves first
+**When:** After verifying everything works  
+**Tool:** Git
 
-Chuck reviews implementation one final time, then asks Claude Code:
-```
-Please merge feature/uc-XXX to main and push.
-```
-
-Claude Code executes:
 ```bash
-# Switch to main branch
-git checkout main
+# Switch to main working branch
+git checkout wave-1-fresh-start-uc200  # or main
 
-# Merge feature branch (CLAUDE.md already updated in Step 4b)
-git merge feature/uc-XXX --no-edit
+# Merge feature branch
+git merge feature/uc-XXX
 
 # Push to GitHub
-git push origin main
+git push origin wave-1-fresh-start-uc200
 
-# Optional: Delete feature branch locally (ask Chuck first)
+# Optional: Delete feature branch
 git branch -D feature/uc-XXX
-
-# Optional: Delete feature branch remotely (ask Chuck first)
-git push origin --delete feature/uc-XXX
 ```
-
-**Note:** CLAUDE.md is already updated and committed from Step 4b, so this merge includes everything needed.
 
 ---
 
-### **Step 7: Update Project Documentation (Chuck does this manually)**
+### **Step 7a: Update CLAUDE.md** ⭐ CRITICAL
 
-**When:** After merge is complete
-**Tool:** Text editor
-**Who:** Chuck
+**When:** After merge is complete, before updating registry  
+**Tool:** Text editor  
+**Time:** 5-10 minutes  
+**Purpose:** Maintain Claude Code's persistent memory for future UCs
+
+**Process:**
+
+1. **Open CLAUDE.md** in your project root
+   ```bash
+   cd ~/Projects/coin-app
+   # Open CLAUDE.md in your editor
+   ```
+
+2. **Extract key information from session summary:**
+   - [ ] New files created
+   - [ ] Patterns established (reusable components, layouts, etc.)
+   - [ ] Integration points (what future UCs can reuse)
+   - [ ] Critical constraints (what must NOT be broken)
+   - [ ] AsyncStorage keys used
+   - [ ] Design decisions
+
+3. **Update "Implemented Use Cases" section:**
+   Add new section for completed UC:
+   
+   ```markdown
+   ### UC-XXX: [Use Case Name] ✔️ COMPLETE
+   
+   **Status:** Implemented and Accepted  
+   **Date:** [Today's date]  
+   **Session Summary:** `sessions/UC-XXX-Session-Summary.md`
+   
+   **Files Created:**
+   - [List key files from session summary]
+   
+   **Patterns Established:**
+   - [List reusable patterns - e.g., "Grid/list toggle pattern"]
+   - [Components that can be reused - e.g., "COINCard component"]
+   
+   **Integration Points:**
+   - [What future UCs can reuse]
+   - [Established patterns to follow]
+   
+   **Critical Constraints:**
+   - [What must NOT be broken]
+   - [Dependencies other features have]
+   ```
+
+4. **Update "Current UC Being Implemented" section:**
+   - Change to next UC in sequence
+   - Add specific integration requirements for that UC
+   - List components/patterns to reuse
+
+5. **Update "Files You Must NEVER Modify" section (if needed):**
+   - Add any new critical files that shouldn't be touched
+
+6. **Update "Project Structure" section (if needed):**
+   - Add new directories or files to the tree
+
+7. **Commit CLAUDE.md:**
+   ```bash
+   git add CLAUDE.md
+   git commit -m "docs: Update CLAUDE.md after UC-XXX implementation"
+   git push
+   ```
+
+**Example: After UC-200**
+
+From UC-200 session summary, extract:
+- ✅ 7 reusable components created (COINCard, COINListItem, SortSelector, etc.)
+- ✅ Grid/List view toggle pattern established
+- ✅ Responsive grid: 3 cols portrait / 4 cols landscape
+- ✅ AsyncStorage keys: `@design_the_what:*` prefix
+- ✅ Tab bar height: 65px (FAB positioning depends on this)
+
+Add to CLAUDE.md so future UCs know:
+- Reuse COINCard, don't create new card components
+- Follow established grid pattern
+- Don't break tab bar height
+
+**Why This Matters:**
+
+Without updating CLAUDE.md:
+- ❌ Claude Code might recreate existing components
+- ❌ Patterns established in UC-200 get ignored
+- ❌ Future UCs break existing functionality
+- ❌ Have to manually explain context every time
+
+With updated CLAUDE.md:
+- ✅ Claude Code reuses existing components
+- ✅ Maintains consistency across UCs
+- ✅ Prevents regressions
+- ✅ Saves time explaining context
+
+**See Also:**
+- CLAUDE.md template in project root
+- Token Management Protocol for session handoffs
+
+---
+
+### **Step 7b: Update Documentation**
+
+**When:** After CLAUDE.md is updated  
+**Tool:** Text editor, Git
 
 **Update Use Case Registry:**
 - Change status from "📝 Planned" to "✔️ Implemented"
@@ -357,16 +411,14 @@ git push origin --delete feature/uc-XXX
 ```bash
 cd ~/Projects/coin-app
 
-# Chuck edits README.md to add new UC to "Implemented" section
+# Edit README.md to add new UC to "Implemented" section
 # Remove from "Pending" section
 # Update stats (files, lines, features)
 
-git add README.md process-docs/Use-Case-Registry.md
-git commit -m "docs: Update registry and README for UC-XXX completion"
+git add README.md
+git commit -m "docs: Update README for UC-XXX completion"
 git push
 ```
-
-**Note:** Chuck does this manually because it requires editorial judgment about project status and messaging.
 
 ---
 
@@ -375,7 +427,6 @@ git push
 ```
 ~/Projects/coin-app/
 ├── CLAUDE.md                        # Claude Code's persistent memory
-├── CLAUDE_CODE_CONTEXT.md           # React Native technical foundations
 ├── README.md                        # Project overview, current status
 ├── specifications/                  # Before implementation
 │   ├── UC-100-Specification.md
@@ -385,13 +436,9 @@ git push
 │   ├── UC-100-Session-Summary.md
 │   ├── UC-200-Session-Summary.md
 │   └── ...
-├── process-docs/                    # Process documentation
-│   ├── DEVELOPMENT-PROCESS.md       # This file
-│   └── Use-Case-Registry.md
 ├── src/                             # Source code
 │   ├── components/
 │   ├── screens/
-│   ├── contexts/
 │   ├── types/
 │   └── utils/
 └── ...
@@ -480,8 +527,6 @@ Files: [X] files
 Lines: ~[X] lines
 
 See: sessions/UC-XXX-Session-Summary.md
-
-🤖 Generated with Claude Code
 ```
 
 ---
@@ -495,7 +540,7 @@ See: sessions/UC-XXX-Session-Summary.md
 
 ### **Backup Points**
 ```bash
-# Before starting new UC (optional)
+# Before starting new UC
 git checkout -b backup-before-uc-XXX
 git push origin backup-before-uc-XXX
 ```
@@ -540,24 +585,24 @@ Each new UC specification must include:
 
 ## Common Pitfalls to Avoid
 
-### **❌ DON'T:**
+### **❌ Don't:**
 - Start implementation without verifying CLAUDE.md accuracy first
 - Start implementation without reading CLAUDE.md
 - Start implementation without reading previous session summaries
 - Create specifications that ignore existing code
 - Skip the session summary step
 - Skip updating CLAUDE.md (new UCs need this context!)
+- Commit without detailed commit message
 - Forget to update Use Case Registry
 - Delete feature branch before verifying merge
 
-### **✅ DO:**
+### **✅ Do:**
 - **Verify CLAUDE.md accuracy before creating each spec**
 - Read CLAUDE.md before creating specifications
 - Read all previous session summaries before creating new spec
 - Include integration notes in specifications
 - Get comprehensive summary from Claude Code
-- **Ask Claude Code to update CLAUDE.md in Step 4b**
-- **Let Claude Code handle all git operations** (Steps 5-6)
+- Update CLAUDE.md after each UC acceptance
 - Use descriptive commit messages with details
 - Update all documentation
 - Keep backup branches for safety
@@ -571,7 +616,7 @@ For Claude Chat sessions:
 - **Examples:**
   - "UC-200 Implementation Session"
   - "UC-100 Implementation Session"
-
+  
 Not: "Session 001", "Session 002" (too generic)
 
 ---
@@ -631,9 +676,8 @@ Before considering UC complete:
 ### **Documentation**
 - [ ] Specification saved in `specifications/`
 - [ ] Session summary saved in `sessions/`
-- [ ] **CLAUDE.md verified accurate in Step 1** ⭐ v1.3
-- [ ] **CLAUDE.md updated by Claude Code in Step 4b** ⭐ v1.4
-- [ ] **CLAUDE.md committed with implementation in Step 5** ⭐ v1.4
+- [ ] **CLAUDE.md updated** ⭐ CRITICAL
+- [ ] **CLAUDE.md verified accurate** ⭐ NEW in v1.3
 - [ ] Git commit has detailed message
 - [ ] README.md updated
 - [ ] Use Case Registry updated
@@ -657,7 +701,7 @@ Before considering UC complete:
 5. ✅ Iterated and enhanced (added tabs, sorting, list view, persistence)
 6. ✅ Got implementation summary from Claude Code
 7. ✅ Saved as `sessions/UC-200-Session-Summary.md`
-8. ✅ Claude Code committed with detailed message
+8. ✅ Committed with detailed message
 9. ✅ Created backup branch (backup-uc200-enhanced)
 10. ✅ **Created initial CLAUDE.md with UC-200 patterns**
 11. ✅ Updated documentation
@@ -666,41 +710,23 @@ Before considering UC complete:
 
 ---
 
-## Example: UC-202 Implementation (Using v1.4 Process)
+## Example: UC-202 Implementation (Using v1.3 Process)
 
-**Following the v1.4 process with Claude Code handling git:**
+**Following the v1.3 process:**
 
-1. ✅ **Verified CLAUDE.md accuracy** (v1.3 step) - After UC-200, CLAUDE.md was accurate
+1. ✅ **Verified CLAUDE.md accuracy** - Found discrepancies:
+   - Handler signatures wrong (documented `COIN` objects, actual uses `coinId: string`)
+   - Non-existent utilities referenced (sortCOINs, loadCOINs, saveCOIN)
+   - Component props incomplete (missing onRemove, showCreatedDate)
+   - Wrong feedback pattern (documented toast, actual uses Alert.alert)
 
-2. ✅ Created `specifications/UC-202-Specification.md` with verified patterns
+2. ✅ **Fixed CLAUDE.md immediately** - Committed corrections separately
 
-3. ✅ Claude Code created feature branch `feature/uc-202`
+3. ✅ Created `specifications/UC-202-Specification-v1.1.md` with accurate patterns
 
-4. ✅ Implemented with Claude Code through multiple iterations:
-   - Added haptic feedback
-   - Implemented shared state via COINContext
-   - Removed Alert confirmations
-   - Fixed flicker issues
-   - Added long name stress testing
+4. ✅ Ready for Claude Code implementation with correct information
 
-5. ✅ **Step 4a:** Claude Code generated session summary
-
-6. ✅ **Step 4b:** Claude Code updated CLAUDE.md immediately (v1.4 improvement)
-   - Claude Code analyzed session summary
-   - Claude Code updated all relevant sections
-   - All UC-202 patterns documented atomically
-
-7. ✅ **Step 5:** Claude Code committed everything together:
-   - Implementation code
-   - Session summary
-   - **CLAUDE.md updates** (atomic with code)
-   - Pushed to feature branch
-
-8. ✅ **Step 6:** Claude Code merged to main (CLAUDE.md already updated)
-
-9. ✅ **Step 7:** Chuck manually updated Use Case Registry and README
-
-**Result:** Documentation stayed perfectly in sync with code, no manual git operations needed by Chuck
+**Result:** Specification based on verified reality, preventing implementation failures
 
 ---
 
@@ -721,62 +747,46 @@ This document should be updated as we learn.
 ## Quick Reference
 
 ### **Starting New UC:**
-
-1. **Chuck in Claude Chat:** Create spec (verify CLAUDE.md first)
-2. **Chuck → Claude Code:** Give spec, approve branch creation
-3. **Claude Code:** Implement (Chuck tests and iterates)
-4. **Claude Code:** Generate session summary (Step 4a)
-5. **Claude Code:** Update CLAUDE.md (Step 4b)
-6. **Chuck:** Review documentation changes
-7. **Claude Code:** Commit everything (Step 5)
-8. **Chuck:** Final review and approve
-9. **Claude Code:** Merge to main (Step 6)
-10. **Chuck:** Update registry and README (Step 7)
-
-### **Commands (Claude Code executes these):**
-
 ```bash
-# Step 2: Create branch
-git checkout -b feature/uc-XXX
-npm start
+# 1. Verify CLAUDE.md accuracy (Step 1) ⭐ NEW in v1.3
+# Check handler signatures, utilities, patterns
+# Fix any discrepancies found
 
-# Step 5: Commit (after Step 4a and 4b)
+# 2. Create spec in Claude Chat (reads CLAUDE.md)
+# Save to specifications/
+
+git checkout -b feature/uc-XXX
+npm start  # Verify working state
+
+# 3. Give spec to Claude Code (reads CLAUDE.md automatically)
+npx @anthropic-ai/claude-code
+
+# 4. After implementation, ask Claude Code for summary
+# 5. Save to sessions/
+
+# 6. Commit
 git add .
 git commit -m "feat: UC-XXX ..."
-git push origin feature/uc-XXX
+git push
 
-# Step 6: Merge
+# 7. Merge
 git checkout main
 git merge feature/uc-XXX
-git push origin main
+git push
+
+# 7a. Update CLAUDE.md ⭐ CRITICAL
+# Extract key info from session summary
+# Add to "Implemented Use Cases" section
+# Update "Current UC" section
+git add CLAUDE.md
+git commit -m "docs: Update CLAUDE.md after UC-XXX"
+git push
+
+# 7b. Update Use Case Registry & README
+git add Use-Case-Registry.md README.md
+git commit -m "docs: Update registry for UC-XXX completion"
+git push
 ```
-
-**Chuck's role:** Review, test, approve, iterate requests, update registry
-**Claude Code's role:** Read context, implement, commit, merge, update CLAUDE.md
-
----
-
-## Who Does What
-
-### **Chuck (Product Owner):**
-- Creates specifications (with Claude Chat)
-- Tests on iPad
-- Requests iterations/enhancements
-- Reviews documentation changes
-- Approves commits and merges
-- Updates Use Case Registry and README manually
-
-### **Claude Code (AI Developer):**
-- Reads CLAUDE.md and specifications
-- Implements features
-- Creates feature branches
-- Generates session summaries
-- **Updates CLAUDE.md** (Step 4b)
-- Commits all changes (Step 5)
-- Merges to main (Step 6)
-- Executes ALL git operations
-
-**Key Principle:** Chuck reviews and approves, Claude Code executes.
 
 ---
 
@@ -788,6 +798,4 @@ git push origin main
 - ✅ Easy onboarding for future contributors
 - ✅ Reproducible development workflow
 - ✅ **Persistent context across all UC implementations**
-- ✅ **Accurate documentation that matches reality** ⭐ v1.3
-- ✅ **Atomic documentation updates with code** ⭐ v1.4
-- ✅ **Efficient workflow with Claude Code handling git** ⭐ v1.4
+- ✅ **Accurate documentation that matches reality** ⭐ NEW in v1.3
