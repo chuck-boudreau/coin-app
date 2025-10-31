@@ -72,6 +72,81 @@
 - [ ] Covers edge cases
 - [ ] Specifies acceptance criteria
 
+### 8. Git Workflow Requirements (MANDATORY - Added v1.4)
+- [ ] **Git Workflow Section (Early)** - Step 2 from DEVELOPMENT-PROCESS.md
+  - Create feature branch command (`git checkout -b feature/uc-XXX`)
+  - Verify clean state (`git status`)
+  - Test current app before starting (`npm start`)
+  - Placed BEFORE implementation steps begin
+  - Branch naming convention specified
+
+- [ ] **Proactive Closeout Detection** - When to ask Chuck
+  - Verification checklist (acceptance criteria met, no regressions, etc.)
+  - Explicit question to ask Chuck with status summary
+  - What to do if "yes" vs "not quite"
+  - List what closeout process includes
+
+- [ ] **Session Closeout Protocol** - Steps 4a, 4b, 5, 6
+  - Step 4a: Generate session summary (with what to include)
+  - Step 4b: Update CLAUDE.md (atomic with code, what sections to update)
+  - Step 5: Commit with pre-commit verification checklist
+  - Step 6: Merge with explicit approval gate
+
+- [ ] **Pre-Commit Verification Checklist**
+  - Session summary saved to `sessions/` folder
+  - CLAUDE.md updated with new UC patterns
+  - TypeScript compiles without errors (`npm run build`)
+  - App starts successfully (`npm start`)
+  - Git status reviewed (`git status`)
+  - No unintended file changes
+
+- [ ] **Approval Gates**
+  - Request explicit approval before merge to main
+  - Show what will be merged (file count, summary)
+  - Wait for "yes" confirmation
+  - Don't assume approval
+
+- [ ] **Escape Hatch Guidance**
+  - What to do if Step 4b (CLAUDE.md update) reveals problems
+  - What to do if commit fails or git errors occur
+  - What to do if Chuck says "not ready" during closeout
+  - What to do if merge creates conflicts
+  - When to stop and ask for guidance
+
+- [ ] **Success Confirmation Message**
+  - Confirm session closeout complete
+  - List what was committed and merged
+  - Note Chuck's remaining manual steps (registry, README)
+  - Acknowledge feature branch can be kept or deleted
+
+**Example (from UC-201 v1.1):**
+> "🔀 Git Workflow - CRITICAL FIRST STEP
+> 
+> Before implementing ANY code:
+> ```bash
+> cd ~/Projects/coin-app
+> git checkout -b feature/uc-201
+> git status
+> npm start
+> ```
+> 
+> [... implementation steps ...]
+> 
+> 🎯 When to Initiate Session Closeout
+> I believe UC-201 is complete and ready for closeout. Here's what I've verified:
+> ✅ All acceptance criteria met
+> ✅ Tested in portrait and landscape
+> [...]
+> Would you like me to begin the session closeout process?
+> 
+> 📋 Session Closeout Protocol
+> Step 4a: Generate session summary...
+> Step 4b: Update CLAUDE.md...
+> Step 5: Commit with verification...
+> Step 6: Merge with approval..."
+
+**Reference:** DEVELOPMENT-PROCESS.md v1.4 (October 30, 2025)
+
 ---
 
 ## 🎯 Quality Enhancements (Should Have)
@@ -328,6 +403,6 @@ Claude Code can use this checklist to:
 
 ---
 
-**Last Updated:** October 30, 2025 after UC-202 completion
-**Based on:** UC-202 specification quality assessment (8.5/10)
+**Last Updated:** October 30, 2025 (v1.4 - Added Git Workflow Requirements)
+**Based on:** UC-202 specification quality assessment (8.5/10) + UC-201 v1.1
 **Purpose:** Guide specification creation for UC-201 and beyond
