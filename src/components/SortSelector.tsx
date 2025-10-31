@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-export type SortOption = 'recent' | 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc' | 'created-newest' | 'created-oldest';
+export type SortOption = 'name-asc' | 'name-desc' | 'status-asc' | 'status-desc' | 'created-newest' | 'created-oldest';
 
 interface SortSelectorProps {
   currentSort: SortOption;
@@ -36,11 +36,6 @@ export function SortSelector({ currentSort, onSortChange }: SortSelectorProps) {
     <View style={styles.container}>
       <Text style={styles.label}>Sort by:</Text>
       <View style={styles.buttonContainer}>
-        <SortButton
-          label="Recent"
-          isActive={currentSort === 'recent'}
-          onPress={() => onSortChange('recent')}
-        />
         <SortButton
           label="Name A-Z"
           isActive={currentSort === 'name-asc'}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { COINCard } from '../components/COINCard';
 import { COINListItem } from '../components/COINListItem';
 import { EmptyRecentsState } from '../components/EmptyRecentsState';
@@ -15,63 +16,57 @@ import { FloatingActionButton } from '../components/FloatingActionButton';
 import { NavigationHeader } from '../components/NavigationHeader';
 import { SortSelector, SortOption } from '../components/SortSelector';
 import { ViewToggle, ViewMode } from '../components/ViewToggle';
-import { COIN } from '../types';
-import { getRecentCOINs, MOCK_COINS } from '../utils/mockData';
-
+import { useCOINs } from '../contexts/COINContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SORT_OPTION_KEY = '@design_the_what:sort_option';
 const VIEW_MODE_KEY = '@design_the_what:view_mode';
 
 export function RecentsScreen() {
   const { width, height } = useWindowDimensions();
-  const [recentCOINs, setRecentCOINs] = useState<COIN[]>([]);
+  const { coins, toggleFavorite, updateCOIN, sortOption, setSortOption } = useCOINs();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [sortOption, setSortOption] = useState<SortOption>('recent');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
-  // Determine if portrait or landscape by comparing width vs height
-  const isPortrait = height > width;
-  const numColumns = isPortrait ? 3 : 4;
+  // Simplified column layout prioritizing preview size over quantity
+  const GAP = 16;
+  const PADDING = 20;
 
-  // Calculate card width for grid layout
-  const horizontalPadding = 16; // padding on left and right
-  const gap = 16; // gap between cards
-  const availableWidth = width - (horizontalPadding * 2);
-  const totalGaps = (numColumns - 1) * gap;
+  // Orientation-based column limits for optimal preview recognition
+  const isLandscape = width > height;
+  const maxColumns = isLandscape ? 3 : 2;  // Portrait: 2, Landscape: 3
+
+  const availableWidth = width - (PADDING * 2);
+
+  // Use maximum columns (simpler = better)
+  const numColumns = maxColumns;
+
+  // Calculate card width to fill available space
+  const totalGaps = (numColumns - 1) * GAP;
   const cardWidth = (availableWidth - totalGaps) / numColumns;
 
-  // Load recent COINs and preferences on mount
-  useEffect(() => {
-    loadRecentCOINs();
-    loadPreferences();
-  }, []);
+  const horizontalPadding = PADDING;
 
-  const loadPreferences = async () => {
+  // Load view mode preference when tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadViewPreference();
+    }, [])
+  );
+
+  const loadViewPreference = async () => {
     try {
-      const [savedSort, savedView] = await Promise.all([
-        AsyncStorage.getItem(SORT_OPTION_KEY),
-        AsyncStorage.getItem(VIEW_MODE_KEY)
-      ]);
-
-      if (savedSort) {
-        setSortOption(savedSort as SortOption);
-      }
+      const savedView = await AsyncStorage.getItem(VIEW_MODE_KEY);
       if (savedView) {
         setViewMode(savedView as ViewMode);
       }
     } catch (error) {
-      console.log('Error loading preferences:', error);
+      console.log('Error loading view preference:', error);
     }
   };
 
-  const handleSortChange = async (newSort: SortOption) => {
+  const handleSortChange = (newSort: SortOption) => {
+    // Sort state managed by COINContext - updates immediately across tabs
     setSortOption(newSort);
-    try {
-      await AsyncStorage.setItem(SORT_OPTION_KEY, newSort);
-    } catch (error) {
-      console.log('Error saving sort option:', error);
-    }
   };
 
   const handleViewModeChange = async (newMode: ViewMode) => {
@@ -83,26 +78,16 @@ export function RecentsScreen() {
     }
   };
 
-  const loadRecentCOINs = () => {
-    // In real app, this would load from AsyncStorage
-    // For now, using mock data
-    const coins = getRecentCOINs(20);
-    setRecentCOINs(coins);
-  };
+  // Filter for recent COINs (has lastAccessedAt)
+  const recentCOINs = useMemo(() => {
+    return coins.filter(coin => coin.lastAccessedAt);
+  }, [coins]);
 
   // Sort COINs based on selected option
   const sortedCOINs = useMemo(() => {
     const sorted = [...recentCOINs];
 
     switch (sortOption) {
-      case 'recent':
-        // Sort by lastAccessedAt (newest first)
-        return sorted.sort((a, b) => {
-          const dateA = new Date(a.lastAccessedAt || a.updatedAt).getTime();
-          const dateB = new Date(b.lastAccessedAt || b.updatedAt).getTime();
-          return dateB - dateA;
-        });
-
       case 'name-asc':
         // Sort by name A-Z
         return sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -144,7 +129,7 @@ export function RecentsScreen() {
     setIsRefreshing(true);
     // Simulate refresh delay
     setTimeout(() => {
-      loadRecentCOINs();
+      // No need to reload - context manages state
       setIsRefreshing(false);
     }, 500);
   };
@@ -169,11 +154,18 @@ export function RecentsScreen() {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            setRecentCOINs(prev => prev.filter(coin => coin.id !== coinId));
+            // Clear lastAccessedAt to remove from recents
+            updateCOIN(coinId, { lastAccessedAt: undefined });
           }
         }
       ]
     );
+  };
+
+  const handleToggleFavorite = (coinId: string) => {
+    // Toggle favorite status using shared context
+    // Visual feedback provided by: star icon change, haptic feedback, and scale animation
+    toggleFavorite(coinId);
   };
 
   const handleCreateCOIN = () => {
@@ -194,8 +186,8 @@ export function RecentsScreen() {
     );
   };
 
-  const isEmpty = recentCOINs.length === 0;
-  const hasAnyCOINs = MOCK_COINS.length > 0;
+  const isEmpty = sortedCOINs.length === 0;
+  const hasAnyCOINs = coins.length > 0;
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -223,7 +215,7 @@ export function RecentsScreen() {
                     coin={item}
                     onPress={handleCardPress}
                     onRemove={handleRemoveFromRecents}
-                    showCreatedDate={sortOption === 'created-newest' || sortOption === 'created-oldest'}
+                    onToggleFavorite={handleToggleFavorite}
                   />
                 </View>
               )}
@@ -248,7 +240,7 @@ export function RecentsScreen() {
                 <COINListItem
                   coin={item}
                   onPress={handleCardPress}
-                  showCreatedDate={sortOption === 'created-newest' || sortOption === 'created-oldest'}
+                  onToggleFavorite={handleToggleFavorite}
                 />
               )}
               keyExtractor={(item) => item.id}

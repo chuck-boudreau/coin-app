@@ -13,6 +13,7 @@ export interface COIN {
   updatedAt: string;            // ISO 8601
   lastAccessedAt?: string;      // ISO 8601 - when user last opened it
   thumbnailUrl?: string;        // Optional: path to thumbnail image
+  isFavorite?: boolean;         // UC-202: true when user favorites this COIN
 
   // Canvas data (minimal for Phase 1)
   circles: Circle[];
@@ -69,7 +70,7 @@ export interface COINCardProps {
   coin: COIN;
   onPress: (coinId: string) => void;
   onRemove: (coinId: string) => void;
-  showCreatedDate?: boolean;  // If true, show createdAt instead of lastAccessedAt
+  onToggleFavorite?: (coinId: string) => void;  // UC-202: Optional handler for favorite toggle
 }
 
 /**

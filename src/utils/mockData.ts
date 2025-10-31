@@ -15,6 +15,7 @@ export const MOCK_COINS: COIN[] = [
     createdAt: '2025-09-15T10:30:00.000Z',
     updatedAt: '2025-10-20T14:22:00.000Z',
     lastAccessedAt: '2025-10-24T09:15:00.000Z',
+    isFavorite: true,
     circles: [
       { id: 'c1', name: 'Onboarding', x: 400, y: 400, radius: 250 }
     ],
@@ -52,6 +53,7 @@ export const MOCK_COINS: COIN[] = [
     createdAt: '2025-10-01T08:00:00.000Z',
     updatedAt: '2025-10-23T16:45:00.000Z',
     lastAccessedAt: '2025-10-23T16:45:00.000Z',
+    isFavorite: true,
     circles: [
       { id: 'c1', name: 'Approval Process', x: 400, y: 400, radius: 250 }
     ],
@@ -73,7 +75,7 @@ export const MOCK_COINS: COIN[] = [
   },
   {
     id: 'coin-003',
-    name: 'Customer Support Escalation',
+    name: 'Supercalifragilisticexpialidocious Customer Support Escalation Process',
     description: 'How support tickets get escalated to engineering',
     projectId: 'proj-003',
     projectName: 'Support Process Improvement',
@@ -92,7 +94,7 @@ export const MOCK_COINS: COIN[] = [
   },
   {
     id: 'coin-004',
-    name: 'Quarterly Planning',
+    name: 'Quarterly Planning for Cross-Functional Enterprise-Wide Strategic Initiatives and Objectives',
     description: 'Process for setting quarterly OKRs',
     projectId: 'proj-004',
     projectName: 'Leadership Workshop 2025',
@@ -138,7 +140,7 @@ export const MOCK_COINS: COIN[] = [
   },
   {
     id: 'coin-006',
-    name: 'Product Launch Checklist',
+    name: 'Comprehensive Multi-Department Product Launch Coordination and Go-To-Market Strategy Checklist',
     description: 'Coordinating go-to-market activities',
     projectId: 'proj-005',
     projectName: 'Product Launch Process',
@@ -177,7 +179,7 @@ export const MOCK_COINS: COIN[] = [
   },
   {
     id: 'coin-008',
-    name: 'Performance Review Process',
+    name: 'Annual 360-Degree Multi-Stakeholder Performance Review and Professional Development Planning Process',
     description: 'Annual performance review workflow',
     projectId: 'proj-001',
     projectName: 'HR Transformation',

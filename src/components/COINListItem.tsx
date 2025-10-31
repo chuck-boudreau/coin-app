@@ -1,5 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { COIN } from '../types';
 import { formatRelativeTime } from '../utils/dateFormatting';
 import { getStatusColor } from '../utils/statusColors';
@@ -7,15 +9,40 @@ import { getStatusColor } from '../utils/statusColors';
 interface COINListItemProps {
   coin: COIN;
   onPress: (coinId: string) => void;
-  showCreatedDate?: boolean;
+  onToggleFavorite?: (coinId: string) => void;  // UC-202: Optional handler for favorite toggle
 }
 
-export function COINListItem({ coin, onPress, showCreatedDate = false }: COINListItemProps) {
+export function COINListItem({ coin, onPress, onToggleFavorite }: COINListItemProps) {
   const statusColor = getStatusColor(coin.status);
-  const relativeTime = showCreatedDate
-    ? formatRelativeTime(coin.createdAt)
-    : formatRelativeTime(coin.lastAccessedAt || coin.updatedAt);
-  const dateLabel = showCreatedDate ? 'Created' : 'Accessed';
+  const relativeTime = formatRelativeTime(coin.updatedAt);
+  const dateLabel = 'Updated';
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handleStarPress = (e: any) => {
+    e.stopPropagation();
+
+    // Trigger haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Animate star scale
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 0.85,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    if (onToggleFavorite) {
+      onToggleFavorite(coin.id);
+    }
+  };
 
   return (
     <Pressable
@@ -56,6 +83,24 @@ export function COINListItem({ coin, onPress, showCreatedDate = false }: COINLis
             {coin.status.charAt(0).toUpperCase() + coin.status.slice(1)}
           </Text>
         </View>
+
+        {/* Star Icon Button (UC-202: Only shown if handler provided) */}
+        {onToggleFavorite && (
+          <Pressable
+            style={styles.starButton}
+            onPress={handleStarPress}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <Ionicons
+                name={coin.isFavorite ? 'star' : 'star-outline'}
+                size={24}
+                color={coin.isFavorite ? '#FF9500' : '#8E8E93'}
+              />
+            </Animated.View>
+          </Pressable>
+        )}
+
         <Text style={styles.chevron}>›</Text>
       </View>
     </Pressable>
@@ -134,15 +179,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 10,
     alignSelf: 'center',
+    minWidth: 75,  // Fixed width for consistent alignment
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
+    textAlign: 'center',
   },
   chevron: {
     fontSize: 24,
     color: '#C7C7CC',
     fontWeight: '300',
+  },
+  // UC-202: Star button style
+  starButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

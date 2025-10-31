@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { COINProvider } from './src/contexts/COINContext';
 import { RecentsScreen } from './src/screens/RecentsScreen';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { FavoritesScreen } from './src/screens/FavoritesScreen';
@@ -50,17 +51,18 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <NavigationContainer
-        onStateChange={(state) => {
-          // Save the current tab whenever navigation state changes
-          const currentRoute = state?.routes[state.index];
-          if (currentRoute?.name) {
-            saveLastTab(currentRoute.name);
-          }
-        }}
-      >
+    <COINProvider>
+      <SafeAreaProvider>
+        <StatusBar barStyle="dark-content" />
+        <NavigationContainer
+          onStateChange={(state) => {
+            // Save the current tab whenever navigation state changes
+            const currentRoute = state?.routes[state.index];
+            if (currentRoute?.name) {
+              saveLastTab(currentRoute.name);
+            }
+          }}
+        >
         <Tab.Navigator
           initialRouteName={initialRoute}
           screenOptions={{
@@ -117,5 +119,6 @@ export default function App() {
         </Tab.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
+    </COINProvider>
   );
 }
