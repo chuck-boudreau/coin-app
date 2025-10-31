@@ -3,7 +3,9 @@
 **Last Updated:** October 30, 2025 after UC-202 implementation
 **Project:** COIN App - Business Process Design Tool
 **Platform:** React Native + Expo (Phase 1: iPad only)
-**Current Branch:** feature/uc-202
+**Current Branch:** main (UC-202 merged)
+
+**⚠️ Prerequisites:** Read `CLAUDE_CODE_CONTEXT.md` first for React Native fundamentals
 
 ---
 

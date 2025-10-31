@@ -2,6 +2,12 @@
 
 **CRITICAL: Read this file completely before generating any code.**
 
+**📍 This file covers:** React Native technical foundations, iPad constraints, anti-patterns
+
+**📍 For project-specific patterns:** See `CLAUDE.md` (UC implementations, established components, integration points)
+
+---
+
 ## Project Overview
 
 Building a native iPad application for creating COIN (Circle of Interaction) diagrams. This is a professional business process design tool for business analysts.
