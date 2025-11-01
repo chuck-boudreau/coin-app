@@ -1,13 +1,15 @@
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated, ActionSheetIOS } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useActionSheet } from '@expo/react-native-action-sheet';
 import { COINCardProps } from '../types';
 import { formatRelativeTime } from '../utils/dateFormatting';
 import { getStatusColor } from '../utils/statusColors';
 
 export function COINCard({ coin, onPress, onToggleFavorite, onDuplicate, onShare, onRemove }: COINCardProps) {
+  const { showActionSheetWithOptions } = useActionSheet();
   const statusColor = getStatusColor(coin.status);
   const relativeTime = formatRelativeTime(coin.updatedAt);
   const dateLabel = 'Updated';
@@ -65,7 +67,7 @@ export function COINCard({ coin, onPress, onToggleFavorite, onDuplicate, onShare
     options.push('Cancel');
     const cancelButtonIndex = options.length - 1;
 
-    ActionSheetIOS.showActionSheetWithOptions(
+    showActionSheetWithOptions(
       {
         options,
         cancelButtonIndex,

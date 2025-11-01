@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActionSheetProvider } from '@expo/react-native-action-sheet';
 import { COINProvider, useCOINs } from './src/contexts/COINContext';
 import { RecentsScreen } from './src/screens/RecentsScreen';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
@@ -330,66 +331,68 @@ export default function App() {
 
   return (
     <COINProvider>
-      <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" />
-        <NavigationContainer
-          onStateChange={(state) => {
-            // Save the current tab whenever navigation state changes
-            const currentRoute = state?.routes[state.index];
-            if (currentRoute?.name) {
-              saveLastTab(currentRoute.name);
-            }
-          }}
-        >
-          <RootStack.Navigator
-            screenOptions={{
-              headerShown: false,
-              presentation: 'modal',
+      <ActionSheetProvider>
+        <SafeAreaProvider>
+          <StatusBar barStyle="dark-content" />
+          <NavigationContainer
+            onStateChange={(state) => {
+              // Save the current tab whenever navigation state changes
+              const currentRoute = state?.routes[state.index];
+              if (currentRoute?.name) {
+                saveLastTab(currentRoute.name);
+              }
             }}
           >
-            <RootStack.Screen
-              name="Main"
-              options={{ headerShown: false }}
-            >
-              {() => <TabNavigator initialRoute={initialRoute} />}
-            </RootStack.Screen>
-            <RootStack.Screen
-              name="COINEditor"
-              component={COINEditorScreen as any}
-              options={({ navigation, route }) => {
-                const { width } = Dimensions.get('window');
-                const screenWidth = Dimensions.get('screen').width;
-                const isIOS26 = Platform.OS === 'ios' &&
-                  parseInt(Platform.Version as string, 10) >= 26;
-                const isWindowed = isIOS26 && width < screenWidth - 10;
-                const isMaximized = isIOS26 && !isWindowed;
-
-                // Get source tab from route params
-                const sourceTab = (route.params as any)?.sourceTab || 'Main';
-
-                return {
-                  presentation: 'fullScreenModal',
-                  headerShown: true,
-                  gestureEnabled: true,
-                  headerStyle: {
-                    backgroundColor: '#FFFFFF',
-                  },
-                  headerTintColor: '#007AFF',
-                  headerTitleStyle: {
-                    fontWeight: '600' as const,
-                    fontSize: 17,
-                  },
-                  headerBackTitle: sourceTab,
-                  headerBackTitleVisible: true,
-                  headerLeftContainerStyle: {
-                    paddingLeft: isWindowed ? 60 : (isMaximized ? 16 : 0),
-                  },
-                };
+            <RootStack.Navigator
+              screenOptions={{
+                headerShown: false,
+                presentation: 'modal',
               }}
-            />
-          </RootStack.Navigator>
-        </NavigationContainer>
-      </SafeAreaProvider>
+            >
+              <RootStack.Screen
+                name="Main"
+                options={{ headerShown: false }}
+              >
+                {() => <TabNavigator initialRoute={initialRoute} />}
+              </RootStack.Screen>
+              <RootStack.Screen
+                name="COINEditor"
+                component={COINEditorScreen as any}
+                options={({ navigation, route }) => {
+                  const { width } = Dimensions.get('window');
+                  const screenWidth = Dimensions.get('screen').width;
+                  const isIOS26 = Platform.OS === 'ios' &&
+                    parseInt(Platform.Version as string, 10) >= 26;
+                  const isWindowed = isIOS26 && width < screenWidth - 10;
+                  const isMaximized = isIOS26 && !isWindowed;
+
+                  // Get source tab from route params
+                  const sourceTab = (route.params as any)?.sourceTab || 'Main';
+
+                  return {
+                    presentation: 'fullScreenModal',
+                    headerShown: true,
+                    gestureEnabled: true,
+                    headerStyle: {
+                      backgroundColor: '#FFFFFF',
+                    },
+                    headerTintColor: '#007AFF',
+                    headerTitleStyle: {
+                      fontWeight: '600' as const,
+                      fontSize: 17,
+                    },
+                    headerBackTitle: sourceTab,
+                    headerBackTitleVisible: true,
+                    headerLeftContainerStyle: {
+                      paddingLeft: isWindowed ? 60 : (isMaximized ? 16 : 0),
+                    },
+                  };
+                }}
+              />
+            </RootStack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </ActionSheetProvider>
     </COINProvider>
   );
 }
