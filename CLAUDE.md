@@ -1,9 +1,9 @@
 # CLAUDE.md - Persistent Context for Claude Code
 
-**Last Updated:** October 31, 2025 after UC-201 implementation
+**Last Updated:** October 31, 2025 after UC-100 implementation
 **Project:** COIN App - Business Process Design Tool
 **Platform:** React Native + Expo (Phase 1: iPad only)
-**Current Branch:** main (UC-201 complete)
+**Current Branch:** main (UC-100 complete)
 
 **⚠️ Prerequisites:** Read `CLAUDE_CODE_CONTEXT.md` first for React Native fundamentals
 
@@ -148,11 +148,13 @@ App.tsx                     ← Tab navigation setup (stable)
 
 ```
 coin-app/
-├── App.tsx                      # [UC-200] Tab navigation setup
+├── App.tsx                      # [UC-100, UC-201] RootStack + Tab navigation
 ├── src/
 │   ├── components/              # Reusable UI components
 │   │   ├── COINCard.tsx        # [UC-200, UC-202] Grid view card with star toggle
 │   │   ├── COINListItem.tsx    # [UC-200, UC-202] List view row with star toggle
+│   │   ├── COINEditorHeader.tsx # [UC-100] Canvas header with project display + name input
+│   │   ├── COINEditorToolbar.tsx # [UC-100] Bottom toolbar with Save button
 │   │   ├── EmptyRecentsState.tsx # [UC-200] Empty state pattern
 │   │   ├── EmptyFavoritesState.tsx # [UC-202] Empty state for favorites
 │   │   ├── FloatingActionButton.tsx # [UC-200] FAB pattern
@@ -161,15 +163,17 @@ coin-app/
 │   │   └── ViewToggle.tsx      # [UC-200] Grid/List toggle
 │   │
 │   ├── contexts/
-│   │   └── COINContext.tsx     # [UC-202] Shared state for coins, favorites, sort
+│   │   └── COINContext.tsx     # [UC-100, UC-202] Shared state for coins, favorites, sort
 │   │
 │   ├── screens/                 # Screen components
+│   │   ├── COINEditorScreen.tsx # [UC-100] ✔️ Complete - Create/Edit COIN
 │   │   ├── FavoritesScreen.tsx # [UC-202] ✔️ Complete
-│   │   ├── ProjectsScreen.tsx  # [UC-201] Placeholder
+│   │   ├── ProjectDetailScreen.tsx # [UC-201] ✔️ Complete
+│   │   ├── ProjectsScreen.tsx  # [UC-201] ✔️ Complete
 │   │   └── RecentsScreen.tsx   # [UC-200] ✔️ Complete
 │   │
 │   ├── types/
-│   │   └── index.ts            # [UC-200, UC-202] Core data models (CRITICAL)
+│   │   └── index.ts            # [UC-100, UC-200, UC-202] Core data models (CRITICAL)
 │   │
 │   └── utils/
 │       ├── dateFormatting.ts   # [UC-200] Relative time formatting
@@ -177,10 +181,12 @@ coin-app/
 │       └── statusColors.ts     # [UC-200] Status badge colors
 │
 ├── specifications/              # Before implementation (by Chuck)
+│   ├── UC-100-Specification.md
 │   ├── UC-200-Specification.md
 │   └── UC-202-Specification.md
 │
 └── sessions/                    # After implementation (from Claude Code)
+    ├── UC-100-Session-Summary.md
     ├── UC-200-Session-Summary.md
     └── UC-202-Session-Summary.md
 ```
@@ -620,16 +626,227 @@ const { sortOption, setSortOption } = useCOINs();
 
 ---
 
+### UC-100: Create New COIN (COIN Editor Canvas) ✔️ COMPLETE
+
+**Status:** Implemented and Accepted
+**Date:** October 31, 2025
+**Session Summary:** `sessions/UC-100-Session-Summary.md`
+
+**Files Created:**
+- 2 components (`COINEditorHeader`, `COINEditorToolbar`)
+- 1 screen (`COINEditorScreen`)
+
+**Files Modified:**
+- Navigation (`App.tsx` - added RootStack wrapper, COINEditor modal, default project logic, iOS 26 padding)
+- Context (`COINContext.tsx` - changed `createCOIN` to return ID for stay-in-editor workflow)
+- Types (`types/index.ts` - added `projectId` and `sourceTab` to COINEditorParams)
+
+**Patterns Established:**
+
+1. **Document Editor Pattern (Not Form Modal)**
+   - Back button navigation (not Cancel button)
+   - Stay in editor after save (create → edit mode transition)
+   - Follows Word, Notes, Pages, Google Docs conventions
+   - **CRITICAL**: Document editors don't have Cancel buttons
+   - Save button stays visible, always saves to existing COIN after first save
+   ```typescript
+   if (latestMode === 'create') {
+     const newCoinId = await createCOIN(latestCoinName.trim(), latestProjectId);
+     // Switch to edit mode and stay in editor
+     setCurrentMode('edit');
+     setCurrentCoinId(newCoinId);
+     setHasUnsavedChanges(false);
+   }
+   ```
+
+2. **Context-Aware Project Assignment Pattern**
+   - Project assigned based on creation context, NOT user selection
+   - Immutable at creation (no inline project picker/editor)
+   - From ProjectDetail → auto-assigned to that project
+   - From Recents/Favorites → uses default project logic
+   - **CRITICAL**: Eliminates entire class of sync bugs
+   ```typescript
+   // Default project: "My COINs" or first active alphabetically
+   const myCOINsProject = projects.find(p => p.name === 'My COINs' && p.status === 'active');
+   const defaultProject = myCOINsProject || projects
+     .filter(p => p.status === 'active')
+     .sort((a, b) => a.name.localeCompare(b.name))[0];
+   ```
+
+3. **Project Display Read-Only Pattern**
+   - Project shown for orientation (user needs to know context in modal)
+   - Not editable inline (prevents sync bugs and cognitive friction)
+   - Single source of truth: Name derived from `projects.find()` reference
+   - Future UC for "Move COIN to Project" operation
+   - **FOLLOW THIS**: Display project info, but no inline editing
+   ```typescript
+   <View style={styles.projectDisplay}>
+     <Ionicons name="folder" size={20} color="#007AFF" />
+     <Text style={styles.projectName}>{projectName}</Text>
+   </View>
+   ```
+
+4. **State Closure Fix with Refs Pattern**
+   - Event handlers capture state at listener setup time
+   - Use refs + useEffect to always access latest values
+   - **CRITICAL** for handlers in navigation listeners
+   - **MUST USE** when `beforeRemove` or similar handlers access state
+   ```typescript
+   // Refs to hold latest values
+   const coinNameRef = useRef(coinName);
+   const currentProjectIdRef = useRef(currentProjectId);
+
+   // Keep refs in sync
+   useEffect(() => { coinNameRef.current = coinName; }, [coinName]);
+   useEffect(() => { currentProjectIdRef.current = currentProjectId; }, [currentProjectId]);
+
+   // Handler uses refs (always current)
+   const handleSave = useCallback(async () => {
+     const latestCoinName = coinNameRef.current;
+     const latestProjectId = currentProjectIdRef.current;
+     // ... save logic with latest values
+   }, [coins, projects, createCOIN, updateCOIN]);
+   ```
+
+5. **Back Button with Unsaved Changes Pattern**
+   - `beforeRemove` listener intercepts back navigation
+   - Alert with 3 options: Keep Editing, Save, Discard
+   - Save option calls `handleSave()` then navigates
+   - Discard has haptic feedback for destructive action
+   - **REUSE THIS** for any editor with unsaved changes
+   ```typescript
+   navigation.addListener('beforeRemove', (e) => {
+     if (!hasUnsavedChanges) return;
+     e.preventDefault();
+     Alert.alert('Discard changes?', 'You have unsaved changes...', [
+       { text: 'Keep Editing', style: 'cancel' },
+       { text: 'Save', onPress: async () => {
+         await handleSave();
+         navigation.dispatch(e.data.action);
+       }},
+       { text: 'Discard', style: 'destructive', onPress: () => {
+         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+         navigation.dispatch(e.data.action);
+       }},
+     ]);
+   });
+   ```
+
+6. **Name Uniqueness Validation Pattern**
+   - Enforce unique names within project scope
+   - Professional tool expectation (single source of truth)
+   - Prevents confusion when referencing COINs in meetings/docs
+   - Helpful error messages suggest alternatives
+   - **FOLLOW THIS**: Uniqueness appropriate for business process design tools
+   ```typescript
+   const duplicateExists = coins.some(
+     c => c.projectIds[0] === latestProjectId &&
+       c.name.toLowerCase() === latestCoinName.trim().toLowerCase() &&
+       c.id !== latestCoinId
+   );
+   if (duplicateExists) {
+     setValidationError(
+       `A COIN with this name already exists in ${project?.name}. Please choose a unique name.`
+     );
+     return;
+   }
+   ```
+
+7. **iOS 26+ Modal Window Controls Pattern**
+   - Detect windowed vs maximized mode
+   - Header needs padding to avoid window control buttons
+   - Toolbar needs padding to avoid resize handle
+   - **CRITICAL**: Different padding for header (top-left controls) vs toolbar (bottom-right handle)
+   ```typescript
+   const isResizableWindow = Platform.OS === 'ios' &&
+     parseInt(Platform.Version as string, 10) >= 26;
+
+   // Header: Avoid window controls (top-left)
+   headerResizable: {
+     paddingTop: 44,
+   }
+
+   // Toolbar: Avoid resize handle (bottom-right)
+   toolbarResizable: {
+     paddingRight: 36,
+   }
+   ```
+
+8. **Source Tab Back Button Label Pattern**
+   - Back button shows which tab opened the editor
+   - Pass `sourceTab` param in navigation
+   - Provides clear navigation context for users
+   - **REUSE THIS** for any modal opened from multiple contexts
+   ```typescript
+   navigation.navigate('COINEditor', {
+     mode: 'create',
+     projectId: project.id,
+     sourceTab: 'Project'  // Shows "< Project" back button
+   });
+
+   // In screen options:
+   headerBackTitle: sourceTab,
+   headerBackTitleVisible: true,
+   ```
+
+**Integration Points:**
+
+✅ **COIN creation flow complete:**
+- Recents/Favorites: Default project logic
+- Project Detail: Context-aware assignment
+- Editor: Create → Edit mode transition
+- Navigation: Back button with unsaved changes handling
+
+✅ **Ready for UC-101 (Edit existing COIN):**
+- Editor already supports edit mode
+- Just needs card press navigation hookup
+- Same validation and save patterns apply
+
+**Critical Constraints:**
+
+⚠️ **Document Editor Pattern Requirements:**
+- NO Cancel button (use Back button only)
+- Save stays visible, doesn't close editor
+- Create mode transitions to Edit mode after first save
+- Unsaved changes warning on back navigation
+
+⚠️ **Project Assignment Rules:**
+- Context-aware assignment at creation ONLY
+- No inline project picker/editor in canvas
+- Project name derived by reference (single source of truth)
+- Future "Move COIN" UC for reassignment
+
+⚠️ **State Closure in Event Handlers:**
+- MUST use refs for handlers in navigation listeners
+- useEffect to keep refs in sync with state
+- Access ref.current in handler (not state directly)
+- Prevents stale state bugs in async callbacks
+
+⚠️ **iOS 26 Modal Padding:**
+- Header: `paddingTop: 44` for window controls
+- Toolbar: `paddingRight: 36` for resize handle
+- Apply only when `isResizableWindow` is true
+
+**Design Decisions Made:**
+
+1. **Name Uniqueness:** Enforced within project scope (professional tool standard)
+2. **Project Context:** Read-only display for orientation, not inline editing
+3. **Editor Pattern:** Document editor (Word/Notes) not form modal
+4. **Stay in Editor:** Create mode transitions to Edit after save (user intent to edit)
+5. **Default Project:** "My COINs" preferred, else alphabetically first active project
+
+---
+
 ## 🚧 Current UC Being Implemented
 
 ### Next UC: To Be Determined
 
 **Possible next UCs:**
-- **UC-100**: Create COIN Modal - Header "+" buttons ready
-- **UC-101**: COIN Editor Screen - Card press handlers ready
-- **UC-210**: Add COINs to Project - Navigation structure ready
+- **UC-101**: Edit COIN - Hook up card press to open editor in edit mode
+- **UC-102**: Delete COIN - Add delete action to card long-press menu
+- **UC-210**: Move COIN to Project - Reassignment UI (now that inline editing removed)
 
-All three core tabs (Recents, Favorites, Projects) are now complete. Next UC will focus on COIN creation and editing workflows.
+COIN creation workflow is now complete. Next focus: Editing existing COINs and management operations.
 
 ---
 
@@ -903,6 +1120,10 @@ const Border = {
     - ❌ `const [sortOption, setSortOption] = useState(...)`
     - ✅ `const { sortOption, setSortOption } = useCOINs()`
 
+11. **Don't access state directly in navigation listeners**
+    - ❌ `navigation.addListener('beforeRemove', () => { saveCOIN(coinName); })`
+    - ✅ Use refs + useEffect pattern to access latest state (see UC-100 pattern #4)
+
 ### ✅ DO
 
 1. **Read session summaries first**
@@ -916,6 +1137,166 @@ const Border = {
 9. **Combine haptic + animation for rich feedback**
 10. **Test with extremely long names to verify truncation**
 11. **Prioritize preview visibility over metadata in cards**
+12. **Use refs for state accessed in event handlers** (especially navigation listeners)
+
+---
+
+## 🎯 Design Decision Framework
+
+**MANDATORY: All UX/UI design decisions MUST reference this research**
+
+### Core Design Research Document
+
+**Location:** `process-docs/Design-Research-IA-Patterns.md`
+
+**CRITICAL:** This research document is the authoritative source for all information architecture, navigation patterns, and user experience decisions in the COIN app. It synthesizes:
+- Business analyst work patterns and cognitive load research
+- iOS Human Interface Guidelines and conventions
+- Document management best practices
+- Academic research on information architecture
+
+**Before making ANY design decision, consult this document.**
+
+### Key Principles from Research
+
+**1. Browse-First, Search-Second (80-90% rule)**
+- Users browse 80-90% of the time, search only 10-20%
+- Prioritize visual recognition over recall
+- Navigation must support visual scanning with strong information scent
+- Search complements browsing, doesn't replace it
+
+**2. Recents-First Home Screen**
+- Default to Recents tab showing recently accessed COINs
+- Supports episodic BA work patterns (return after gaps)
+- Matches iOS Files app, iWork apps, GoodNotes patterns
+- Provides immediate context for "what was I working on?"
+
+**3. Shallow Hierarchy (1-3 levels maximum)**
+- Projects → COINs (2 levels, that's it)
+- NO deeper nesting (no Projects → Phases → COINs)
+- Use faceted filtering instead of deep folders
+- Flat structures beat deep hierarchies for speed and discoverability
+
+**4. Three-Tab Navigation (Temporal, Organizational, Personal)**
+- **Recents**: Chronological access (temporal mental model)
+- **Projects**: Hierarchical organization (project-centric mental model)
+- **Favorites**: User-curated access (personal mental model)
+- Each tab is an independent entry point, maintains own state
+
+**5. Universal iOS Patterns**
+- Bottom tab bar (NEVER hamburger menu on iOS)
+- Push transitions for hierarchy (right-to-left)
+- Modal presentations for self-contained tasks (bottom-up)
+- Swipe-right-from-left-edge to go back
+- Pull-down to refresh
+
+**6. Visual Organization**
+- Large thumbnails for visual content recognition
+- Grid view default (3 columns portrait, 4 landscape)
+- List view toggle available (iOS Notes pattern)
+- Color coding + status badges (never color alone)
+- Card-based layout with 8pt corner radius
+
+**7. Prominent Creation Action**
+- "+" button for COIN creation available in ALL contexts
+- Universal action (not context-limited)
+- Follows Procreate/GoodNotes pattern
+- Project selection built into creation flow (UC-100)
+
+**8. Rich Metadata + Faceted Filtering**
+- Essential metadata only (5-8 properties)
+- Multi-select faceted filters (OR within facet, AND between facets)
+- Show active filters as dismissible chips
+- Display result counts for feedback
+
+**9. Context Switching Minimization**
+- Topic switching + depth switching = 40% productivity loss
+- Design must minimize these transitions
+- Each tab maintains independent state
+- Don't force users to "home" between related actions
+
+**10. Episodic Work Pattern Support**
+- BAs work on projects episodically with gaps
+- Strong visual cues for recognition (not recall)
+- Status badges, color tags, thumbnails essential
+- Recent items show "what was I doing?" instantly
+
+### When to Consult Design Research
+
+**MUST consult before:**
+- ✅ Adding new navigation elements
+- ✅ Creating new organizational structures
+- ✅ Designing list/grid layouts
+- ✅ Implementing search functionality
+- ✅ Adding filters or sorting options
+- ✅ Creating empty states
+- ✅ Designing card layouts
+- ✅ Planning multi-screen flows
+
+**Ask yourself:**
+1. What does the research say about this pattern?
+2. What iOS convention applies here?
+3. How does this support BA episodic work patterns?
+4. Does this minimize or increase cognitive load?
+5. Is this browse-first or search-first thinking?
+
+### Design Review Checklist
+
+Before declaring any UI/UX work complete:
+
+- [ ] Consulted `Design-Research-IA-Patterns.md` for relevant patterns
+- [ ] Follows iOS Human Interface Guidelines conventions
+- [ ] Supports browse-first user behavior (80-90% use case)
+- [ ] Maintains shallow hierarchy (1-3 levels max)
+- [ ] Uses universal iOS patterns (tab bar, push, modal, swipe-back)
+- [ ] Provides strong information scent (clear, descriptive labels)
+- [ ] Includes visual recognition cues (thumbnails, colors, badges)
+- [ ] Minimizes context switching and cognitive load
+- [ ] Touch targets meet 44x44px minimum
+- [ ] Works in both portrait and landscape orientations
+
+### Phase Alignment
+
+**Current Phase: Phase 1 MVP (Essential)**
+
+From research document priorities:
+- ✅ Bottom tab navigation: Recents, Projects, Favorites
+- ✅ Recents tab with card thumbnails
+- ✅ Projects tab with colored cards
+- ✅ Drill-down: Project → COINs grid
+- ✅ Essential metadata (name, status, dates, color)
+- ⏳ Basic search (defer advanced features)
+- ✅ Create COIN (+ button on all tabs - UC-100)
+- ✅ Create Project
+- ✅ Grid view (list view Phase 2)
+- ⏳ Status filtering (Active/Archived toggle)
+
+**Defer to Phase 2:**
+- Full faceted filtering (status, client, date range, owner, tags)
+- List view toggle
+- Manual sorting in Favorites
+- Advanced search (content search, not just names)
+- Smart collections
+- Export features
+
+**Defer to Phase 3:**
+- Collaboration features
+- AI suggestions
+- Portfolio analytics
+
+### Anti-Patterns to Absolutely Avoid
+
+From research (these are proven failures):
+
+❌ **Hamburger menu** for primary navigation
+❌ **Deep hierarchies** beyond 3 levels
+❌ **Generic labels** ("More", "Stuff", "Miscellaneous")
+❌ **Auto-switching tabs** programmatically
+❌ **Custom back gestures** that conflict with iOS swipe-from-left
+❌ **Hidden search** (must be discoverable)
+❌ **Color-only indicators** (always pair with icon/text)
+❌ **Context buried below fold** (critical info must be visible)
+❌ **Home tab** that duplicates other functionality
 
 ---
 
@@ -979,6 +1360,6 @@ const Border = {
 
 **This file is your persistent memory. Read it every time before coding.**
 
-**Last UC Completed:** UC-201 (Projects Tab) ✔️
-**Next UC:** To Be Determined (UC-100, UC-101, or UC-210)
+**Last UC Completed:** UC-100 (Create New COIN) ✔️
+**Next UC:** To Be Determined (UC-101 Edit COIN, UC-102 Delete COIN, or UC-210 Move COIN)
 **Updated:** October 31, 2025

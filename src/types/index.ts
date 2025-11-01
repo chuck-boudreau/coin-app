@@ -131,3 +131,15 @@ export interface EmptyRecentsStateProps {
   onCreateCOIN: () => void;
   onBrowseProjects: () => void;
 }
+
+/**
+ * Navigation params for COINEditor screen
+ * UC-100: Create New COIN
+ * Design: Project is context-aware (assigned at creation, not editable)
+ */
+export type COINEditorParams = {
+  mode: 'create' | 'edit';
+  coinId?: string;              // Required when mode='edit'
+  projectId?: string;           // Required when mode='create' (context-aware)
+  sourceTab?: string;           // Name of tab that opened the editor
+};

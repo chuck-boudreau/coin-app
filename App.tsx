@@ -6,11 +6,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COINProvider } from './src/contexts/COINContext';
+import { COINProvider, useCOINs } from './src/contexts/COINContext';
 import { RecentsScreen } from './src/screens/RecentsScreen';
 import { ProjectsScreen } from './src/screens/ProjectsScreen';
 import { ProjectDetailScreen } from './src/screens/ProjectDetailScreen';
 import { FavoritesScreen } from './src/screens/FavoritesScreen';
+import COINEditorScreen from './src/screens/COINEditorScreen';
 
 // Shared header button styles
 const headerButtonStyles = {
@@ -29,6 +30,7 @@ const headerButtonTextStyles = {
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const RootStack = createStackNavigator();
 const LAST_TAB_KEY = '@design_the_what:last_tab';
 
 type TabRoute = 'Recents' | 'Projects' | 'Favorites';
@@ -42,7 +44,7 @@ const getStackScreenOptions = () => {
     },
     headerTintColor: '#007AFF',
     headerTitleStyle: {
-      fontWeight: '600',
+      fontWeight: '600' as const,
       fontSize: 17,
     },
     headerBackTitleVisible: false, // Hide back button text, just show chevron
@@ -50,13 +52,29 @@ const getStackScreenOptions = () => {
 };
 
 // Recents Stack Navigator
-function RecentsStack() {
+function RecentsStack({ navigation }: any) {
+  const { projects } = useCOINs();
+
   const handleCreateCOIN = () => {
-    Alert.alert(
-      'Create COIN',
-      'Would open Create COIN modal\n\n(UC-100 not yet implemented)',
-      [{ text: 'OK' }]
-    );
+    // Get default project: "My COINs" or first active project alphabetically
+    const myCOINsProject = projects.find(p => p.name === 'My COINs' && p.status === 'active');
+    const defaultProject = myCOINsProject || projects
+      .filter(p => p.status === 'active')
+      .sort((a, b) => a.name.localeCompare(b.name))[0];
+
+    if (defaultProject) {
+      navigation.navigate('COINEditor', {
+        mode: 'create',
+        projectId: defaultProject.id,
+        sourceTab: 'Recents'
+      });
+    } else {
+      Alert.alert(
+        'No Projects',
+        'Please create a project first in the Projects tab.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const screenOptions = {
@@ -86,13 +104,29 @@ function RecentsStack() {
 }
 
 // Favorites Stack Navigator
-function FavoritesStack() {
+function FavoritesStack({ navigation }: any) {
+  const { projects } = useCOINs();
+
   const handleCreateCOIN = () => {
-    Alert.alert(
-      'Create COIN',
-      'Would open Create COIN modal\n\n(UC-100 not yet implemented)',
-      [{ text: 'OK' }]
-    );
+    // Get default project: "My COINs" or first active project alphabetically
+    const myCOINsProject = projects.find(p => p.name === 'My COINs' && p.status === 'active');
+    const defaultProject = myCOINsProject || projects
+      .filter(p => p.status === 'active')
+      .sort((a, b) => a.name.localeCompare(b.name))[0];
+
+    if (defaultProject) {
+      navigation.navigate('COINEditor', {
+        mode: 'create',
+        projectId: defaultProject.id,
+        sourceTab: 'Favorites'
+      });
+    } else {
+      Alert.alert(
+        'No Projects',
+        'Please create a project first in the Projects tab.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const screenOptions = {
@@ -122,7 +156,7 @@ function FavoritesStack() {
 }
 
 // Projects Stack Navigator (UC-201)
-function ProjectsStack() {
+function ProjectsStack({ navigation }: any) {
   const { width } = useWindowDimensions();
   const screenWidth = Dimensions.get('screen').width;
 
@@ -139,11 +173,7 @@ function ProjectsStack() {
   };
 
   const handleCreateCOIN = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Create COIN in this project (UC-100 with project context)',
-      [{ text: 'OK' }]
-    );
+    navigation.navigate('COINEditor', { mode: 'create', sourceTab: 'Project' });
   };
 
   const screenOptions = {
@@ -171,19 +201,95 @@ function ProjectsStack() {
       <Stack.Screen
         name="ProjectDetail"
         component={ProjectDetailScreen as any}
-        options={({ route }: any) => ({
+        options={({ route, navigation }: any) => ({
           title: route.params?.projectName || 'Project',
           headerLeftContainerStyle: {
             paddingLeft: isResizableWindow ? 60 : 0,
           },
           headerRight: () => (
-            <TouchableOpacity onPress={handleCreateCOIN} style={headerButtonStyles}>
+            <TouchableOpacity
+              onPress={() => {
+                const projectId = route.params?.projectId;
+                if (projectId) {
+                  navigation.navigate('COINEditor', { mode: 'create', projectId, sourceTab: 'Project' });
+                }
+              }}
+              style={headerButtonStyles}
+            >
               <Text style={headerButtonTextStyles}>+</Text>
             </TouchableOpacity>
           ),
         })}
       />
     </Stack.Navigator>
+  );
+}
+
+// Tab Navigator Component
+function TabNavigator({ initialRoute }: { initialRoute: TabRoute }) {
+  const saveLastTab = async (routeName: string) => {
+    try {
+      await AsyncStorage.setItem(LAST_TAB_KEY, routeName);
+    } catch (error) {
+      console.log('Error saving last tab:', error);
+    }
+  };
+
+  return (
+    <Tab.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#666666',
+        tabBarStyle: {
+          backgroundColor: 'rgba(255, 255, 255, 0.92)',
+          borderTopWidth: 0.5,
+          borderTopColor: 'rgba(0, 0, 0, 0.1)',
+          paddingTop: 10,
+          paddingBottom: 10,
+          height: 65,
+          position: 'absolute',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: '600',
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Recents"
+        component={RecentsStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: 24, color }}>🕐</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: 24, color }}>⭐</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Projects"
+        component={ProjectsStack}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: 24, color }}>📁</Text>
+          ),
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -235,62 +341,55 @@ export default function App() {
             }
           }}
         >
-        <Tab.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{
-            headerShown: false,
-            tabBarActiveTintColor: '#007AFF',
-            tabBarInactiveTintColor: '#666666',
-            tabBarStyle: {
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-              borderTopWidth: 0.5,
-              borderTopColor: 'rgba(0, 0, 0, 0.1)',
-              paddingTop: 10,
-              paddingBottom: 10,
-              height: 65,
-              position: 'absolute',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 4,
-            },
-            tabBarLabelStyle: {
-              fontSize: 14,
-              fontWeight: '600',
-            },
-          }}
-        >
-          <Tab.Screen
-            name="Recents"
-            component={RecentsStack}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Text style={{ fontSize: 24, color }}>🕐</Text>
-              ),
+          <RootStack.Navigator
+            screenOptions={{
+              headerShown: false,
+              presentation: 'modal',
             }}
-          />
-          <Tab.Screen
-            name="Favorites"
-            component={FavoritesStack}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Text style={{ fontSize: 24, color }}>⭐</Text>
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Projects"
-            component={ProjectsStack}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <Text style={{ fontSize: 24, color }}>📁</Text>
-              ),
-            }}
-          />
-        </Tab.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+          >
+            <RootStack.Screen
+              name="Main"
+              options={{ headerShown: false }}
+            >
+              {() => <TabNavigator initialRoute={initialRoute} />}
+            </RootStack.Screen>
+            <RootStack.Screen
+              name="COINEditor"
+              component={COINEditorScreen as any}
+              options={({ navigation, route }) => {
+                const { width } = Dimensions.get('window');
+                const screenWidth = Dimensions.get('screen').width;
+                const isIOS26 = Platform.OS === 'ios' &&
+                  parseInt(Platform.Version as string, 10) >= 26;
+                const isWindowed = isIOS26 && width < screenWidth - 10;
+                const isMaximized = isIOS26 && !isWindowed;
+
+                // Get source tab from route params
+                const sourceTab = (route.params as any)?.sourceTab || 'Main';
+
+                return {
+                  presentation: 'fullScreenModal',
+                  headerShown: true,
+                  gestureEnabled: true,
+                  headerStyle: {
+                    backgroundColor: '#FFFFFF',
+                  },
+                  headerTintColor: '#007AFF',
+                  headerTitleStyle: {
+                    fontWeight: '600' as const,
+                    fontSize: 17,
+                  },
+                  headerBackTitle: sourceTab,
+                  headerBackTitleVisible: true,
+                  headerLeftContainerStyle: {
+                    paddingLeft: isWindowed ? 60 : (isMaximized ? 16 : 0),
+                  },
+                };
+              }}
+            />
+          </RootStack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
     </COINProvider>
   );
 }

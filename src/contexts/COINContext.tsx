@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COIN } from '../types';
-import { MOCK_COINS } from '../utils/mockData';
+import { COIN, Project } from '../types';
+import { MOCK_COINS, mockProjects } from '../utils/mockData';
 import { SortOption } from '../components/SortSelector';
 import { ProjectSortOption } from '../components/ProjectSortSelector';
 import { ViewMode } from '../components/ViewToggle';
@@ -10,12 +10,17 @@ const SORT_OPTION_KEY = '@design_the_what:sort_option';
 const PROJECT_SORT_OPTION_KEY = '@design_the_what:project_sort_option';
 const VIEW_MODE_KEY = '@design_the_what:view_mode';
 const GROUP_BY_PROJECT_KEY = '@design_the_what:group_by_project';
+const COINS_KEY = '@design_the_what:coins';
+const PROJECTS_KEY = '@design_the_what:projects';
 
 interface COINContextType {
   coins: COIN[];
-  updateCOIN: (coinId: string, updates: Partial<COIN>) => void;
+  projects: Project[];
+  createCOIN: (name: string, projectId: string) => Promise<string>;
+  updateCOIN: (coinId: string, updates: Partial<COIN>) => Promise<void>;
   toggleFavorite: (coinId: string) => void;
   duplicateCOIN: (coinId: string) => void;
+  createProject: (name: string) => Promise<string>;
   reloadCoins: () => void;
   sortOption: SortOption;
   setSortOption: (option: SortOption) => void;
@@ -31,6 +36,7 @@ const COINContext = createContext<COINContextType | undefined>(undefined);
 
 export function COINProvider({ children }: { children: ReactNode }) {
   const [coins, setCoins] = useState<COIN[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [sortOption, setSortOptionState] = useState<SortOption>('created-newest');
   const [projectSortOption, setProjectSortOptionState] = useState<ProjectSortOption>('name-asc');
   const [viewMode, setViewModeState] = useState<ViewMode>('grid');
@@ -39,6 +45,7 @@ export function COINProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Load initial data and preferences
     setCoins(MOCK_COINS);
+    setProjects(mockProjects);
     loadSortPreference();
     loadProjectSortPreference();
     loadViewModePreference();
@@ -125,14 +132,114 @@ export function COINProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateCOIN = (coinId: string, updates: Partial<COIN>) => {
-    setCoins(prevCoins =>
-      prevCoins.map(coin =>
-        coin.id === coinId
-          ? { ...coin, ...updates }
-          : coin
-      )
+  const generateUUID = (): string => {
+    return `coin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const generateProjectUUID = (): string => {
+    return `proj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  const createCOIN = async (name: string, projectId: string): Promise<string> => {
+    const now = new Date().toISOString();
+    const project = projects.find(p => p.id === projectId);
+
+    const newCOIN: COIN = {
+      id: generateUUID(),
+      name,
+      description: '',
+      projectIds: [projectId],
+      projectName: project?.name,
+      status: 'draft',
+      processState: 'current',
+      createdAt: now,
+      updatedAt: now,
+      lastAccessedAt: now,
+      isFavorite: false,
+
+      // Empty canvas data with single process circle
+      circles: [{
+        id: 'c1',
+        name: '',
+        x: 400,
+        y: 300,
+        radius: 200,
+      }],
+      participants: [],
+      interactions: [],
+    };
+
+    // Add to state
+    const updatedCoins = [newCOIN, ...coins];
+    setCoins(updatedCoins);
+
+    // Persist to AsyncStorage
+    try {
+      await AsyncStorage.setItem(COINS_KEY, JSON.stringify(updatedCoins));
+
+      // Update project coin count
+      if (project) {
+        const updatedProject = {
+          ...project,
+          coinCount: project.coinCount + 1,
+          lastModifiedDate: now,
+        };
+        const updatedProjects = projects.map(p =>
+          p.id === projectId ? updatedProject : p
+        );
+        setProjects(updatedProjects);
+        await AsyncStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+      }
+    } catch (error) {
+      console.error('Error creating COIN:', error);
+      throw error;
+    }
+
+    return newCOIN.id;
+  };
+
+  const updateCOIN = async (coinId: string, updates: Partial<COIN>): Promise<void> => {
+    const updatedCoins = coins.map(c =>
+      c.id === coinId ? { ...c, ...updates } : c
     );
+    setCoins(updatedCoins);
+
+    try {
+      await AsyncStorage.setItem(COINS_KEY, JSON.stringify(updatedCoins));
+    } catch (error) {
+      console.error('Error updating COIN:', error);
+      throw error;
+    }
+  };
+
+  const createProject = async (name: string): Promise<string> => {
+    const now = new Date().toISOString();
+
+    const newProject: Project = {
+      id: generateProjectUUID(),
+      name,
+      description: '',
+      clientOrDepartment: '',
+      status: 'active',
+      colorTag: '#007AFF',
+      tags: [],
+      createdDate: now,
+      lastModifiedDate: now,
+      coinCount: 0,
+      owner: 'user-001',
+    };
+
+    const updatedProjects = [...projects, newProject];
+    setProjects(updatedProjects);
+
+    try {
+      await AsyncStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
+    }
+
+    return newProject.id;
   };
 
   const toggleFavorite = (coinId: string) => {
@@ -181,7 +288,24 @@ export function COINProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <COINContext.Provider value={{ coins, updateCOIN, toggleFavorite, duplicateCOIN, reloadCoins, sortOption, setSortOption, projectSortOption, setProjectSortOption, viewMode, setViewMode, groupByProject, setGroupByProject }}>
+    <COINContext.Provider value={{
+      coins,
+      projects,
+      createCOIN,
+      updateCOIN,
+      toggleFavorite,
+      duplicateCOIN,
+      createProject,
+      reloadCoins,
+      sortOption,
+      setSortOption,
+      projectSortOption,
+      setProjectSortOption,
+      viewMode,
+      setViewMode,
+      groupByProject,
+      setGroupByProject
+    }}>
       {children}
     </COINContext.Provider>
   );
